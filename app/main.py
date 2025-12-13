@@ -171,7 +171,7 @@ async def send_event_localized(room: dict):
 async def start_next_round(room: dict):
     # Game might have already ended via eliminations
     act = active_pids(room)
-    if len(act) <= 1:
+    if len(act) <= 2:
         await declare_winner_if_any(room)
         return
 
@@ -198,14 +198,25 @@ async def start_next_round(room: dict):
 
 
 def compute_elimination_plan(total_players: int) -> dict[int, int]:
-    # Distribute eliminations (total_players - 1) across rounds 3..7 as evenly as possible
-    total_elims = max(0, total_players - 1)
+    """
+    Plan eliminations so that two players remain at the end.
+    Distribute (total_players - 2) eliminations across rounds 3..7 as evenly as possible,
+    prioritizing later rounds (shift voting towards the end for small lobbies).
+    """
+    total_elims = max(0, total_players - 2)
     rounds = [3, 4, 5, 6, 7]
     base = total_elims // len(rounds)
     rem = total_elims % len(rounds)
-    plan = {}
-    for i, r in enumerate(rounds):
-        plan[r] = base + (1 if i < rem else 0)
+    plan: dict[int, int] = {}
+    # Fill base amount first
+    for r in rounds:
+        plan[r] = base
+    # Distribute remainder to later rounds first (shift voting to the end)
+    for r in reversed(rounds):
+        if rem <= 0:
+            break
+        plan[r] += 1
+        rem -= 1
     return plan
 
 
@@ -225,6 +236,20 @@ async def declare_winner_if_any(room: dict):
             msg_tpl = ui.get("congrats_winner", "Congratulations, {name}! You made it into the bunker.")
             try:
                 message = msg_tpl.format(name=winner_name)
+            except Exception:
+                message = msg_tpl
+            await safe_send(p["ws"], {"type": "game_over", "message": message})
+        await broadcast_state(room)
+        return True
+    if len(act) == 2:
+        n1 = name_by_pid(room, act[0])
+        n2 = name_by_pid(room, act[1])
+        room["phase"] = PHASE_GAME_OVER
+        for p in list(room["players"].values()):
+            ui = GAME_DATA[p["lang"]]["ui"]
+            msg_tpl = ui.get("congrats_winners_two", "Congratulations, {name1} and {name2}! You both made it into the bunker.")
+            try:
+                message = msg_tpl.format(name1=n1, name2=n2)
             except Exception:
                 message = msg_tpl
             await safe_send(p["ws"], {"type": "game_over", "message": message})
@@ -413,7 +438,7 @@ async def ws_room(ws: WebSocket, room_id: str):
 
                 # If all active confirmed, either start vote (from round 3) or next round
                 if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)) and len(active_pids(room)) > 0:
-                    if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 1:
+                    if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 2:
                         room["phase"] = PHASE_VOTE
                         room["round_votes"] = {}
                         await broadcast(room, {"type": "phase", "phase": PHASE_VOTE})
@@ -455,7 +480,7 @@ async def ws_room(ws: WebSocket, room_id: str):
 
                     # rank candidates by votes desc, then by name asc for determinism
                     ranked = sorted(active_pids(room), key=lambda ap: (-tally.get(ap, 0), room["players"][ap]["name"].casefold()))
-                    quota = min(current_round_quota(room), max(0, len(active_pids(room)) - 1))
+                    quota = min(current_round_quota(room), max(0, len(active_pids(room)) - 2))
                     to_eliminate = set(ranked[:quota]) if quota > 0 else set()
 
                     # mark eliminated and notify
@@ -500,7 +525,7 @@ async def ws_room(ws: WebSocket, room_id: str):
                         room["phase"] = PHASE_CONFIRM
                 if room["phase"] == PHASE_CONFIRM:
                     if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)):
-                        if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 1:
+                        if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 2:
                             room["phase"] = PHASE_VOTE
                         else:
                             await start_next_round(room)
