@@ -288,7 +288,11 @@ async def ws_room(ws: WebSocket, room_id: str):
                 room["start_votes"].add(pid)
                 await broadcast_state(room)
 
-                if len(room["start_votes"]) == len(room["players"]) and len(room["players"]) > 0:
+                # Require unanimous votes AND a minimum of 3 players to start
+                if (
+                    len(room["start_votes"]) == len(room["players"]) and
+                    len(room["players"]) >= 3
+                ):
                     room["round"] = 0
                     await start_next_round(room)
 

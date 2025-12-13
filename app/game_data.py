@@ -41,6 +41,7 @@ GAME_DATA = {
             "disconnected": "Disconnected",
             "error": "Error",
             "too_many_players": "Too many players for the available cards. Max players: {n}",
+            "min_players_to_start": "Need at least {n} players to start",
         },
         "labels": {
             "profession": "Profession",
@@ -195,6 +196,7 @@ GAME_DATA = {
             "disconnected": "Соединение потеряно",
             "error": "Ошибка",
             "too_many_players": "Слишком много игроков для доступных карт. Максимум игроков: {n}",
+            "min_players_to_start": "Нужно минимум {n} игроков, чтобы начать",
         },
         "labels": {
             "profession": "Профессия",
@@ -349,6 +351,7 @@ GAME_DATA = {
             "disconnected": "Връзката прекъсна",
             "error": "Грешка",
             "too_many_players": "Твърде много играчи спрямо наличните карти. Максимален брой играчи: {n}",
+            "min_players_to_start": "Нужни са поне {n} играчи, за да започнете",
         },
         "labels": {
             "profession": "Професия",

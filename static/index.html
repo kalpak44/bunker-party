@@ -63,6 +63,10 @@
                      class="hidden text-center text-sm text-gray-300 bg-gray-900 rounded p-2">
                 </div>
 
+                <div id="minPlayersHint"
+                     class="hidden text-center text-sm text-amber-200 bg-amber-900/40 border border-amber-700 rounded p-2">
+                </div>
+
                 <button id="confirm"
                         class="hidden w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-500 py-2 rounded font-semibold">
                 </button>
@@ -289,6 +293,17 @@
                     state.phase === "lobby"
                         ? ui.waiting_votes
                         : ui.waiting_confirms;
+
+                const showMinPlayers = state.phase === "lobby" && (state.players_total || 0) < 3;
+                $("minPlayersHint").classList.toggle("hidden", !showMinPlayers);
+                if (showMinPlayers) {
+                    try {
+                        const tpl = ui.min_players_to_start || "Need at least {n} players to start";
+                        $("minPlayersHint").textContent = tpl.replace("{n}", "3");
+                    } catch {
+                        $("minPlayersHint").textContent = "Need at least 3 players to start";
+                    }
+                }
 
                 if (state.phase === "lobby")
                     $("progress").textContent = `${ui.ready_to_start}: ${state.start_votes}/${state.players_total}`;
