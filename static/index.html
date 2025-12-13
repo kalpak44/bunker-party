@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>Bunker Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-6">
+<div class="w-full max-w-6xl space-y-6">
+
+    <h1 id="title" class="text-3xl font-bold text-center">Bunker Party</h1>
+
+    <!-- MAIN -->
+    <div id="main" class="max-w-md mx-auto space-y-3">
+        <input id="name" class="w-full px-3 py-2 text-black rounded" placeholder="Your name"/>
+
+        <select id="lang" class="w-full px-3 py-2 text-black rounded">
+            <option value="en">English</option>
+            <option value="ru">Русский</option>
+            <option value="bg">Български</option>
+        </select>
+
+        <button id="create" class="w-full bg-blue-600 py-2 rounded">Create new game</button>
+
+        <div class="flex gap-2">
+            <input id="room" class="flex-1 px-3 py-2 text-black rounded" placeholder="Room code" inputmode="numeric" maxlength="4"/>
+            <button id="join" class="bg-green-600 px-4 py-2 rounded">Join</button>
+        </div>
+
+        <div id="mainError" class="hidden bg-red-900/40 border border-red-700 text-red-200 rounded p-2 text-sm"></div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game" class="hidden space-y-4">
+
+        <div class="grid lg:grid-cols-3 gap-4">
+
+            <!-- ROOM -->
+            <div class="bg-gray-800 rounded p-4 space-y-2">
+                <div id="roomCodeLabel" class="text-sm text-gray-400">Room code</div>
+
+                <div class="flex items-center gap-2">
+                    <div id="roomCode" class="font-mono text-2xl tracking-widest"></div>
+                    <button id="copyBtn" class="bg-gray-700 px-2 py-1 rounded text-xs">Copy</button>
+                </div>
+
+                <div id="players" class="text-sm text-gray-300"></div>
+            </div>
+
+            <!-- STATUS -->
+            <div class="bg-gray-800 rounded p-4 space-y-2">
+                <div id="round" class="text-lg font-semibold"></div>
+                <div id="bunker" class="bg-gray-900 rounded p-3"></div>
+
+                <div id="phase" class="text-sm text-gray-300"></div>
+
+                <button id="startBtn" class="hidden w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded font-semibold"></button>
+
+                <div id="waiting"
+                     class="hidden text-center text-sm text-gray-300 bg-gray-900 rounded p-2"></div>
+
+                <button id="confirm" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded font-semibold"></button>
+
+                <div id="progress" class="text-xs text-gray-400"></div>
+
+                <div id="gameOver" class="hidden text-center bg-gray-900 rounded p-3"></div>
+            </div>
+
+            <!-- LOG -->
+            <div class="bg-gray-800 rounded p-4 space-y-2">
+                <div id="logTitle" class="font-semibold">Game log</div>
+                <div id="log" class="text-sm text-gray-300 space-y-1 max-h-64 overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- YOUR CARDS -->
+        <div class="bg-gray-800 rounded p-4">
+            <div id="yourCardsTitle" class="font-semibold mb-2">Your cards</div>
+            <div id="yourCards" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"></div>
+        </div>
+
+        <!-- REVEALED -->
+        <div class="bg-gray-800 rounded p-4">
+            <div id="revealedCardsTitle" class="font-semibold mb-2">Revealed cards</div>
+            <div id="revealedBoard" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let ws;
+    let ui = {};
+    let labels = {};
+    let character = {};
+    let state = {};
+    let myName = "";
+    let myLang = "en";
+    let myNameCanonical = "";
+    let hasStarted = false;
+    let revealedThisRound = false;
+
+    const $ = (id) => document.getElementById(id);
+
+    function showMainError(text) {
+        $("mainError").classList.remove("hidden");
+        $("mainError").textContent = text;
+    }
+
+    function clearMainError() {
+        $("mainError").classList.add("hidden");
+        $("mainError").textContent = "";
+    }
+
+    function log(msg) {
+        const d = document.createElement("div");
+        d.textContent = msg;
+        $("log").appendChild(d);
+        $("log").scrollTop = $("log").scrollHeight;
+    }
+
+    function escapeHtml(s) {
+        return String(s)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function protoWs() {
+        return location.protocol === "https:" ? "wss" : "ws";
+    }
+
+    $("copyBtn").onclick = async () => {
+        await navigator.clipboard.writeText($("roomCode").textContent);
+        log(ui.copied || "Copied");
+    };
+
+    $("create").onclick = async () => {
+        clearMainError();
+        myName = $("name").value.trim();
+        myLang = $("lang").value;
+
+        if (!myName) return showMainError("Name is required");
+
+        const res = await fetch(`/create/${myLang}`, { method: "POST" });
+        const data = await res.json();
+
+        $("room").value = data.room_id;
+        joinRoom(data.room_id);
+    };
+
+    $("join").onclick = () => {
+        clearMainError();
+        myName = $("name").value.trim();
+        myLang = $("lang").value;
+
+        const room = $("room").value.trim();
+
+        if (!myName) return showMainError("Name is required");
+        if (!/^\d{4}$/.test(room)) return showMainError("Room code must be 4 digits");
+
+        joinRoom(room);
+    };
+
+    function joinRoom(room) {
+        const wsUrl = `${protoWs()}://${location.host}/ws/${room}`;
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ name: myName, lang: myLang }));
+            $("main").classList.add("hidden");
+            $("game").classList.remove("hidden");
+        };
+
+        ws.onclose = () => {
+            log(ui.disconnected || "Disconnected");
+        };
+
+        ws.onmessage = (e) => {
+            const m = JSON.parse(e.data);
+
+            if (m.type === "error") {
+                // if we are already in game screen, show in log + alert banner
+                const msg = m.message || (ui.error || "Error");
+                log("⚠️ " + msg);
+                // return to main for join errors
+                $("game").classList.add("hidden");
+                $("main").classList.remove("hidden");
+                showMainError(msg);
+                try { ws.close(); } catch {}
+                return;
+            }
+
+            if (m.type === "init") {
+                ui = m.ui;
+                labels = m.labels;
+                character = m.character;
+                myNameCanonical = m.player_name;
+
+                $("title").textContent = ui.title;
+
+                $("create").textContent = ui.create_new_game;
+                $("join").textContent = ui.join;
+                $("name").placeholder = ui.your_name;
+                $("room").placeholder = ui.room_code_placeholder;
+
+                $("roomCodeLabel").textContent = ui.room_code_label;
+                $("copyBtn").textContent = ui.copy;
+                $("logTitle").textContent = ui.log_title;
+                $("yourCardsTitle").textContent = ui.your_cards;
+                $("revealedCardsTitle").textContent = ui.revealed_cards;
+
+                $("startBtn").textContent = ui.ready_to_start;
+                $("confirm").textContent = ui.confirm_round_end;
+                $("waiting").textContent = ui.waiting_opponents;
+
+                $("roomCode").textContent = m.room_id;
+                log(`${ui.room_code}: ${m.room_id}`);
+
+                renderCards();
+            }
+
+            if (m.type === "players") {
+                $("players").textContent = `${ui.players}: ${m.players.join(", ")}`;
+                log(`${ui.players}: ${m.players.join(", ")}`);
+            }
+
+            if (m.type === "bunker_event") {
+                hasStarted = true;
+                revealedThisRound = false;
+                $("round").textContent = `${ui.round}: ${m.round}`;
+                $("bunker").textContent = `${ui.bunker_event}: ${m.event}`;
+                log(`🏠 ${ui.round} ${m.round}: ${m.event}`);
+                renderCards();
+            }
+
+            if (m.type === "player_reveal") {
+                const keyLabel = labels[m.key] || m.key;
+                log(`🔓 ${m.player} — ${keyLabel}: ${m.value}`);
+            }
+
+            if (m.type === "phase") {
+                // no-op (state will update)
+            }
+
+            if (m.type === "game_over") {
+                $("gameOver").classList.remove("hidden");
+                $("gameOver").textContent = m.message || ui.game_over;
+                log("🏁 " + ($("gameOver").textContent));
+            }
+
+            if (m.type === "state") {
+                state = m;
+
+                // phase text
+                let phaseText = "";
+                if (state.phase === "lobby") phaseText = ui.phase_lobby;
+                else if (state.phase === "reveal") phaseText = ui.phase_reveal;
+                else if (state.phase === "confirm") phaseText = ui.phase_confirm;
+                else phaseText = ui.game_over;
+
+                $("phase").textContent = phaseText;
+
+                // buttons visibility
+                $("startBtn").classList.toggle("hidden", state.phase !== "lobby");
+                $("confirm").classList.toggle("hidden", state.phase !== "confirm" || !hasStarted);
+
+                // waiting panel
+                const waiting =
+                    (state.phase === "lobby" && state.start_votes < state.players_total) ||
+                    (state.phase === "confirm" && state.confirms_done < state.players_total);
+
+                $("waiting").classList.toggle("hidden", !waiting);
+                $("waiting").textContent =
+                    (state.phase === "lobby") ? ui.waiting_votes : (state.phase === "confirm" ? ui.waiting_confirms : ui.waiting_opponents);
+
+                // progress
+                if (state.phase === "lobby") {
+                    $("progress").textContent = `${ui.ready_to_start}: ${state.start_votes}/${state.players_total}`;
+                } else if (state.phase === "reveal") {
+                    $("progress").textContent = `${ui.phase_reveal}: ${state.reveals_done}/${state.players_total}`;
+                } else if (state.phase === "confirm") {
+                    $("progress").textContent = `${ui.phase_confirm}: ${state.confirms_done}/${state.players_total}`;
+                } else {
+                    $("progress").textContent = "";
+                }
+
+                // enable buttons unless we lock locally
+                if (state.phase === "lobby") $("startBtn").disabled = false;
+                if (state.phase === "confirm") $("confirm").disabled = false;
+
+                renderCards();
+                renderRevealed();
+            }
+        };
+    }
+
+    $("startBtn").onclick = () => {
+        if (!ws) return;
+        ws.send(JSON.stringify({ type: "vote_start" }));
+        $("startBtn").disabled = true;
+        log("✅ " + (ui.you_voted_start || "Voted"));
+    };
+
+    $("confirm").onclick = () => {
+        if (!ws) return;
+        ws.send(JSON.stringify({ type: "confirm_round_end" }));
+        $("confirm").disabled = true;
+        log("✅ " + (ui.you_confirmed || "Confirmed"));
+    };
+
+    function renderCards() {
+        const root = $("yourCards");
+        root.innerHTML = "";
+
+        const myPublic = state.revealed?.[myNameCanonical] || {};
+        const inReveal = state.phase === "reveal";
+        const canRevealThisRound = inReveal && !revealedThisRound;
+
+        Object.keys(character || {}).forEach((k) => {
+            const alreadyUsed = myPublic[k] !== undefined; // once revealed, never again
+            const disabled = alreadyUsed || !canRevealThisRound;
+
+            const btn = document.createElement("button");
+            btn.className =
+                "bg-gray-900 p-3 rounded border border-gray-700 text-left " +
+                (disabled ? "opacity-50 cursor-not-allowed" : "hover:border-gray-500");
+
+            btn.innerHTML = `
+      <div class="text-xs text-gray-400">${escapeHtml(labels[k] || k)}</div>
+      <div class="font-semibold">${escapeHtml(character[k])}</div>
+      <div class="text-xs text-gray-500 mt-1">${escapeHtml(alreadyUsed ? ui.already_revealed : ui.hidden)}</div>
+    `;
+
+            btn.disabled = disabled;
+            btn.onclick = () => {
+                ws.send(JSON.stringify({ type: "reveal_card", key: k }));
+                revealedThisRound = true;
+                log(`🎴 ${ui.you_revealed}: ${labels[k] || k}`);
+                renderCards();
+            };
+
+            root.appendChild(btn);
+        });
+    }
+
+    function renderRevealed() {
+        const root = $("revealedBoard");
+        root.innerHTML = "";
+
+        const revealed = state.revealed || {};
+        Object.entries(revealed).forEach(([name, cards]) => {
+            const box = document.createElement("div");
+            box.className = "bg-gray-900 p-3 rounded border border-gray-700";
+
+            let html = `<div class="font-semibold mb-2">${escapeHtml(name)}</div>`;
+            const entries = Object.entries(cards || {});
+
+            if (entries.length === 0) {
+                html += `<div class="text-sm text-gray-500">—</div>`;
+            } else {
+                entries.forEach(([k, v]) => {
+                    html += `
+          <div class="text-sm flex justify-between gap-3">
+            <div class="text-gray-400">${escapeHtml(labels[k] || k)}</div>
+            <div class="font-medium">${escapeHtml(v)}</div>
+          </div>
+        `;
+                });
+            }
+
+            box.innerHTML = html;
+            root.appendChild(box);
+        });
+    }
+</script>
+</body>
+</html>
