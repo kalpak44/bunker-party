@@ -34,9 +34,49 @@ def create(lang: str):
     return {"room_id": create_room(lang)}
 
 
-def make_character(lang: str) -> dict[str, str]:
-    cards = GAME_DATA[lang]["cards"]
-    return {k: random.choice(cards[k]) for k in REVEAL_KEYS}
+def make_character_for_room(room: dict, lang: str) -> dict[str, str]:
+    """
+    Create a character for a player ensuring no duplicate card values per key within the room.
+    Preference is given to the player's selected language list; if it's exhausted for a key,
+    fall back to any available value (including duplicates as a last resort).
+    """
+    # Prefer the player's language; if not present (shouldn't happen), use room default
+    if lang not in GAME_DATA:
+        lang = room.get("default_lang", "en")
+
+    cards_by_lang = GAME_DATA[lang]["cards"]
+
+    # Collect used values in the room per key (string comparison)
+    used_per_key: dict[str, set] = {k: set() for k in REVEAL_KEYS}
+    for p in room.get("players", {}).values():
+        ch = p.get("character", {})
+        for k in REVEAL_KEYS:
+            v = ch.get(k)
+            if v is not None:
+                used_per_key[k].add(v)
+
+    character: dict[str, str] = {}
+    for k in REVEAL_KEYS:
+        # Start with preferred language pool
+        pool = list(cards_by_lang.get(k, []))
+        # Union across all languages for this key
+        union_pool = set(pool)
+        for gd in GAME_DATA.values():
+            union_pool.update(gd["cards"].get(k, []))
+
+        # Filter out already used values for this key
+        available = [v for v in pool if v not in used_per_key[k]]
+        union_available = [v for v in union_pool if v not in used_per_key[k]]
+
+        if available:
+            character[k] = random.choice(available)
+        elif union_available:
+            character[k] = random.choice(union_available)
+        else:
+            # No unique options left at all for this key in any language — reject creating character
+            raise ValueError(f"No unique cards remaining for key '{k}' in room {room.get('room_id')}")
+
+    return character
 
 
 async def safe_send(ws: WebSocket, msg: dict):
@@ -174,7 +214,12 @@ async def ws_room(ws: WebSocket, room_id: str):
             await ws.close(code=1008)
             return
 
-        character = make_character(lang)
+        try:
+            character = make_character_for_room(room, lang)
+        except ValueError:
+            await safe_send(ws, {"type": "error", "code": "no_unique_cards", "message": ui.get("error", "Error")})
+            await ws.close(code=1013)
+            return
 
         room["players"][pid] = {
             "name": name,
