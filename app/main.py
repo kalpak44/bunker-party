@@ -155,6 +155,9 @@ async def broadcast_state(room: dict):
         "confirms_done": confirms_done,
         "votes_done": votes_done,
         "vote_quota": current_round_quota(room),
+        # Revote context exposed to clients (names + quota)
+        "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
+        "revote_quota": int(room.get("revote_quota") or 0),
         "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
         "revealed": {p["name"]: p["revealed"] for p in room["players"].values()},
     })
@@ -189,6 +192,9 @@ async def start_next_round(room: dict):
     room["round_reveals"] = {}
     room["round_confirms"] = set()
     room["round_votes"] = {}
+    # clear any revote context from previous round
+    room.pop("revote_targets", None)
+    room.pop("revote_quota", None)
 
     n = len(GAME_DATA[room["default_lang"]]["bunkers"])
     room["event_idx"] = random.randrange(n)
@@ -455,7 +461,12 @@ async def ws_room(ws: WebSocket, room_id: str):
                 # map name to pid among active players, case-insensitive
                 target_pid = None
                 target_name_cf = target_name.casefold()
-                for apid in active_pids(room):
+                # if in revote, only consider revote targets
+                revote_targets: set | None = room.get("revote_targets")
+                candidates = list(active_pids(room))
+                if revote_targets:
+                    candidates = [ap for ap in candidates if ap in revote_targets]
+                for apid in candidates:
                     if room["players"][apid]["name"].casefold() == target_name_cf:
                         target_pid = apid
                         break
@@ -478,10 +489,46 @@ async def ws_room(ws: WebSocket, room_id: str):
                         if voter in active_pids(room) and tgt in active_pids(room):
                             tally[tgt] = tally.get(tgt, 0) + 1
 
-                    # rank candidates by votes desc, then by name asc for determinism
-                    ranked = sorted(active_pids(room), key=lambda ap: (-tally.get(ap, 0), room["players"][ap]["name"].casefold()))
+                    # Determine elimination quota taking into account active players
                     quota = min(current_round_quota(room), max(0, len(active_pids(room)) - 2))
-                    to_eliminate = set(ranked[:quota]) if quota > 0 else set()
+
+                    # If no one should be eliminated, just proceed to next round
+                    if quota <= 0:
+                        await start_next_round(room)
+                        return
+
+                    # Revote context (if exists, limit candidates and use stored quota)
+                    revote_targets = room.get("revote_targets")
+                    revote_quota = room.get("revote_quota")
+                    if revote_targets:
+                        candidates = [ap for ap in active_pids(room) if ap in revote_targets]
+                        quota = int(revote_quota or quota)
+                    else:
+                        candidates = list(active_pids(room))
+
+                    # If nobody received any votes, avoid unfair deterministic elimination
+                    max_votes = 0
+                    if candidates:
+                        max_votes = max((tally.get(ap, 0) for ap in candidates), default=0)
+                    if max_votes == 0:
+                        # No signal from votes — skip eliminations this round
+                        await start_next_round(room)
+                        return
+
+                    # Compute top group by highest votes among considered candidates
+                    top_group = [ap for ap in candidates if tally.get(ap, 0) == max_votes]
+
+                    if len(top_group) > quota:
+                        # Trigger a revote restricted to the tied top candidates
+                        room["revote_targets"] = set(top_group)
+                        room["revote_quota"] = quota
+                        room["round_votes"] = {}
+                        await broadcast_state(room)
+                        continue
+
+                    # No need for revote; eliminate by ranking deterministically within remaining slots
+                    ranked = sorted(candidates, key=lambda ap: (-tally.get(ap, 0), room["players"][ap]["name"].casefold()))
+                    to_eliminate = set(ranked[:quota])
 
                     # mark eliminated and notify
                     for ep in to_eliminate:
@@ -496,6 +543,10 @@ async def ws_room(ws: WebSocket, room_id: str):
                             await safe_send(room["players"][ep]["ws"], {"type": "eliminated", "message": txt})
                         except Exception:
                             pass
+
+                    # clear revote context once resolved
+                    room.pop("revote_targets", None)
+                    room.pop("revote_quota", None)
 
                     # After elimination, check for winner or move to next round
                     if await declare_winner_if_any(room):
