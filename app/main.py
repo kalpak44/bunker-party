@@ -12,6 +12,7 @@ from app.rooms import (
     PHASE_LOBBY,
     PHASE_REVEAL,
     PHASE_CONFIRM,
+    PHASE_VOTE,
     PHASE_GAME_OVER,
 )
 from app.game_data import GAME_DATA
@@ -123,17 +124,38 @@ def all_used_all_cards(room: dict) -> bool:
     return all(len(p["used_keys"]) >= len(REVEAL_KEYS) for p in room["players"].values())
 
 
+def active_pids(room: dict) -> list[str]:
+    eliminated = room.get("eliminated", set())
+    return [pid for pid in room["players"].keys() if pid not in eliminated]
+
+
+def name_by_pid(room: dict, pid: str) -> str:
+    p = room["players"].get(pid)
+    return p["name"] if p else ""
+
+
 async def broadcast_state(room: dict):
+    act_pids = active_pids(room)
+    # Progress counts should consider only active (not eliminated) players
+    reveals_done = len([pid for pid in room.get("round_reveals", {}).keys() if pid in act_pids])
+    confirms_done = len([pid for pid in room.get("round_confirms", set()) if pid in act_pids])
+    votes_done = len([pid for pid in room.get("round_votes", {}).keys() if pid in act_pids])
+    # players_total is active participants count in current phase
+    players_total = len(act_pids)
+
     await broadcast(room, {
         "type": "state",
         "phase": room["phase"],
         "round": room["round"],
         "event_idx": room["event_idx"],
-        "players_total": len(room["players"]),
+        "players_total": players_total,
         "capacity": compute_unique_capacity(),
         "start_votes": len(room["start_votes"]),
-        "reveals_done": len(room["round_reveals"]),
-        "confirms_done": len(room["round_confirms"]),
+        "reveals_done": reveals_done,
+        "confirms_done": confirms_done,
+        "votes_done": votes_done,
+        "vote_quota": current_round_quota(room),
+        "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
         "revealed": {p["name"]: p["revealed"] for p in room["players"].values()},
     })
 
@@ -147,6 +169,12 @@ async def send_event_localized(room: dict):
 
 
 async def start_next_round(room: dict):
+    # Game might have already ended via eliminations
+    act = active_pids(room)
+    if len(act) <= 1:
+        await declare_winner_if_any(room)
+        return
+
     if all_used_all_cards(room):
         room["phase"] = PHASE_GAME_OVER
         # localized game over to each player
@@ -160,12 +188,49 @@ async def start_next_round(room: dict):
     room["round"] += 1
     room["round_reveals"] = {}
     room["round_confirms"] = set()
+    room["round_votes"] = {}
 
     n = len(GAME_DATA[room["default_lang"]]["bunkers"])
     room["event_idx"] = random.randrange(n)
 
     await send_event_localized(room)
     await broadcast_state(room)
+
+
+def compute_elimination_plan(total_players: int) -> dict[int, int]:
+    # Distribute eliminations (total_players - 1) across rounds 3..7 as evenly as possible
+    total_elims = max(0, total_players - 1)
+    rounds = [3, 4, 5, 6, 7]
+    base = total_elims // len(rounds)
+    rem = total_elims % len(rounds)
+    plan = {}
+    for i, r in enumerate(rounds):
+        plan[r] = base + (1 if i < rem else 0)
+    return plan
+
+
+def current_round_quota(room: dict) -> int:
+    plan = room.get("elim_plan") or {}
+    return int(plan.get(room.get("round", 0), 0))
+
+
+async def declare_winner_if_any(room: dict):
+    act = active_pids(room)
+    if len(act) == 1:
+        winner_pid = act[0]
+        winner_name = name_by_pid(room, winner_pid)
+        room["phase"] = PHASE_GAME_OVER
+        for p in list(room["players"].values()):
+            ui = GAME_DATA[p["lang"]]["ui"]
+            msg_tpl = ui.get("congrats_winner", "Congratulations, {name}! You made it into the bunker.")
+            try:
+                message = msg_tpl.format(name=winner_name)
+            except Exception:
+                message = msg_tpl
+            await safe_send(p["ws"], {"type": "game_over", "message": message})
+        await broadcast_state(room)
+        return True
+    return False
 
 
 @app.websocket("/ws/{room_id}")
@@ -294,6 +359,8 @@ async def ws_room(ws: WebSocket, room_id: str):
                     len(room["players"]) >= 3
                 ):
                     room["round"] = 0
+                    # Initialize elimination plan based on initial number of players
+                    room["elim_plan"] = compute_elimination_plan(len(room["players"]))
                     await start_next_round(room)
 
             # REVEAL
@@ -304,6 +371,10 @@ async def ws_room(ws: WebSocket, room_id: str):
 
                 p = room["players"].get(pid)
                 if not p:
+                    continue
+
+                # eliminated cannot act
+                if pid in room.get("eliminated", set()):
                     continue
 
                 # prevent repeating the same card across game
@@ -325,8 +396,8 @@ async def ws_room(ws: WebSocket, room_id: str):
                     "value": p["character"][key],
                 })
 
-                # if all revealed, go confirm
-                if len(room["round_reveals"]) == len(room["players"]) and len(room["players"]) > 0:
+                # if all active players revealed, go confirm
+                if len([x for x in room["round_reveals"].keys() if x in active_pids(room)]) == len(active_pids(room)) and len(active_pids(room)) > 0:
                     room["phase"] = PHASE_CONFIRM
                     await broadcast(room, {"type": "phase", "phase": PHASE_CONFIRM})
 
@@ -334,10 +405,76 @@ async def ws_room(ws: WebSocket, room_id: str):
 
             # CONFIRM ROUND END
             elif t == "confirm_round_end" and room["phase"] == PHASE_CONFIRM:
+                # eliminated cannot act
+                if pid in room.get("eliminated", set()):
+                    continue
                 room["round_confirms"].add(pid)
                 await broadcast_state(room)
 
-                if len(room["round_confirms"]) == len(room["players"]) and len(room["players"]) > 0:
+                # If all active confirmed, either start vote (from round 3) or next round
+                if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)) and len(active_pids(room)) > 0:
+                    if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 1:
+                        room["phase"] = PHASE_VOTE
+                        room["round_votes"] = {}
+                        await broadcast(room, {"type": "phase", "phase": PHASE_VOTE})
+                        await broadcast_state(room)
+                    else:
+                        await start_next_round(room)
+
+            # VOTE TO ELIMINATE
+            elif t == "vote_eliminate" and room.get("phase") == PHASE_VOTE:
+                # eliminated cannot act
+                if pid in room.get("eliminated", set()):
+                    continue
+                target_name = (msg.get("target") or "").strip()
+                # map name to pid among active players, case-insensitive
+                target_pid = None
+                target_name_cf = target_name.casefold()
+                for apid in active_pids(room):
+                    if room["players"][apid]["name"].casefold() == target_name_cf:
+                        target_pid = apid
+                        break
+                if not target_pid:
+                    continue
+                # cannot vote if already voted
+                if pid in room.get("round_votes", {}):
+                    continue
+                # cannot vote for self
+                if target_pid == pid:
+                    continue
+                room["round_votes"][pid] = target_pid
+                await broadcast_state(room)
+
+                # If all active voted, tally
+                if len([x for x in room["round_votes"].keys() if x in active_pids(room)]) == len(active_pids(room)):
+                    # tally votes for targets among active
+                    tally: dict[str, int] = {}
+                    for voter, tgt in room["round_votes"].items():
+                        if voter in active_pids(room) and tgt in active_pids(room):
+                            tally[tgt] = tally.get(tgt, 0) + 1
+
+                    # rank candidates by votes desc, then by name asc for determinism
+                    ranked = sorted(active_pids(room), key=lambda ap: (-tally.get(ap, 0), room["players"][ap]["name"].casefold()))
+                    quota = min(current_round_quota(room), max(0, len(active_pids(room)) - 1))
+                    to_eliminate = set(ranked[:quota]) if quota > 0 else set()
+
+                    # mark eliminated and notify
+                    for ep in to_eliminate:
+                        room.setdefault("eliminated", set()).add(ep)
+                        pname = room["players"][ep]["name"]
+                        # notify all (log purpose)
+                        await broadcast(room, {"type": "eliminated_info", "player": pname})
+                        # notify eliminated personally
+                        try:
+                            ui = GAME_DATA[room["players"][ep]["lang"]]["ui"]
+                            txt = ui.get("you_are_out", "You are out. You can observe but not participate.")
+                            await safe_send(room["players"][ep]["ws"], {"type": "eliminated", "message": txt})
+                        except Exception:
+                            pass
+
+                    # After elimination, check for winner or move to next round
+                    if await declare_winner_if_any(room):
+                        return
                     await start_next_round(room)
 
     except WebSocketDisconnect:
@@ -349,6 +486,8 @@ async def ws_room(ws: WebSocket, room_id: str):
             room["start_votes"].discard(pid)
             room["round_reveals"].pop(pid, None)
             room["round_confirms"].discard(pid)
+            room.get("round_votes", {}).pop(pid, None)
+            room.get("eliminated", set()).discard(pid)
 
             if not room["players"]:
                 rooms.pop(room_id, None)
@@ -357,10 +496,19 @@ async def ws_room(ws: WebSocket, room_id: str):
                 if room["phase"] == PHASE_LOBBY:
                     room["start_votes"] = {x for x in room["start_votes"] if x in room["players"]}
                 if room["phase"] == PHASE_REVEAL:
-                    if len(room["round_reveals"]) == len(room["players"]):
+                    if len([x for x in room["round_reveals"].keys() if x in active_pids(room)]) == len(active_pids(room)):
                         room["phase"] = PHASE_CONFIRM
                 if room["phase"] == PHASE_CONFIRM:
-                    if len(room["round_confirms"]) == len(room["players"]):
+                    if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)):
+                        if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 1:
+                            room["phase"] = PHASE_VOTE
+                        else:
+                            await start_next_round(room)
+                            return
+                if room["phase"] == PHASE_VOTE:
+                    if len([x for x in room.get("round_votes", {}).keys() if x in active_pids(room)]) == len(active_pids(room)):
+                        # trigger tally path as if last vote happened
+                        # simple fallback: start next round (cannot easily re-run tally on disconnect); keep state consistent
                         await start_next_round(room)
                         return
 

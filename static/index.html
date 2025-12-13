@@ -71,11 +71,20 @@
                         class="hidden w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-500 py-2 rounded font-semibold">
                 </button>
 
+                <!-- VOTE PANEL -->
+                <div id="votePanel" class="hidden bg-gray-900 rounded p-3 space-y-2">
+                    <div id="voteTitle" class="font-semibold text-sm">Vote to eliminate</div>
+                    <div id="voteHint" class="text-xs text-gray-400"></div>
+                    <div id="voteList" class="flex flex-wrap gap-2"></div>
+                </div>
+
                 <div id="progress" class="text-xs text-gray-400"></div>
 
                 <div id="gameOver"
                      class="hidden text-center bg-gray-900 rounded p-3 text-sm">
                 </div>
+
+                <div id="youOut" class="hidden text-center bg-red-900/40 border border-red-700 text-red-200 rounded p-2 text-sm"></div>
             </div>
 
             <!-- ROOM -->
@@ -242,6 +251,7 @@
                 $("startBtn").textContent = ui.ready_to_start;
                 $("confirm").textContent = ui.confirm_round_end;
                 $("waiting").textContent = ui.waiting_opponents;
+                $("voteTitle").textContent = ui.phase_vote || "Vote";
 
                 $("roomCode").textContent = m.room_id;
                 log(`${ui.room_code}: ${m.room_id}`);
@@ -279,20 +289,23 @@
                 if (state.phase === "lobby") phaseText = ui.phase_lobby;
                 if (state.phase === "reveal") phaseText = ui.phase_reveal;
                 if (state.phase === "confirm") phaseText = ui.phase_confirm;
+                if (state.phase === "vote") phaseText = ui.phase_vote || "Vote";
                 $("phase").textContent = phaseText;
 
                 $("startBtn").classList.toggle("hidden", state.phase !== "lobby");
                 $("confirm").classList.toggle("hidden", state.phase !== "confirm" || !hasStarted);
+                $("votePanel").classList.toggle("hidden", state.phase !== "vote");
 
                 const waiting =
                     (state.phase === "lobby" && state.start_votes < state.players_total) ||
-                    (state.phase === "confirm" && state.confirms_done < state.players_total);
+                    (state.phase === "confirm" && state.confirms_done < state.players_total) ||
+                    (state.phase === "vote" && (state.votes_done || 0) < (state.players_total || 0));
 
                 $("waiting").classList.toggle("hidden", !waiting);
                 $("waiting").textContent =
-                    state.phase === "lobby"
-                        ? ui.waiting_votes
-                        : ui.waiting_confirms;
+                    state.phase === "lobby" ? (ui.waiting_votes || "Waiting for votes...") :
+                        state.phase === "confirm" ? (ui.waiting_confirms || "Waiting for confirmations...") :
+                            (ui.waiting_votes || "Waiting for votes...");
 
                 const showMinPlayers = state.phase === "lobby" && (state.players_total || 0) < 3;
                 $("minPlayersHint").classList.toggle("hidden", !showMinPlayers);
@@ -311,6 +324,8 @@
                     $("progress").textContent = `${ui.phase_reveal}: ${state.reveals_done}/${state.players_total}`;
                 else if (state.phase === "confirm")
                     $("progress").textContent = `${ui.phase_confirm}: ${state.confirms_done}/${state.players_total}`;
+                else if (state.phase === "vote")
+                    $("progress").textContent = `${ui.phase_vote || "Vote"}: ${state.votes_done || 0}/${state.players_total}`;
                 else $("progress").textContent = "";
 
                 $("startBtn").disabled = false;
@@ -318,6 +333,14 @@
 
                 renderCards();
                 renderRevealed();
+                renderVote();
+
+                // Show eliminated state for me
+                const meOut = (state.eliminated_names || []).some(n => (n || "").toLowerCase() === (myNameCanonical || "").toLowerCase());
+                $("youOut").classList.toggle("hidden", !meOut);
+                if (meOut) {
+                    $("youOut").textContent = ui.you_are_out || "You are out. You can observe but not participate.";
+                }
             }
         };
     }
@@ -340,7 +363,8 @@
 
         const myPublic = state.revealed?.[myNameCanonical] || {};
         const inReveal = state.phase === "reveal";
-        const canRevealThisRound = inReveal && !revealedThisRound;
+        const meOut = (state.eliminated_names || []).some(n => (n || "").toLowerCase() === (myNameCanonical || "").toLowerCase());
+        const canRevealThisRound = inReveal && !revealedThisRound && !meOut;
 
         Object.keys(character || {}).forEach((k) => {
             const alreadyUsed = myPublic[k] !== undefined;
@@ -368,6 +392,37 @@
             };
 
             root.appendChild(btn);
+        });
+    }
+
+    function renderVote() {
+        const list = $("voteList");
+        const hint = $("voteHint");
+        list.innerHTML = "";
+        if (!state || state.phase !== "vote") {
+            return;
+        }
+        const eliminated = new Set((state.eliminated_names || []).map(n => (n || "").toLowerCase()));
+        const allPlayers = ($("players").textContent || "").split(": ")[1] || "";
+        const names = allPlayers ? allPlayers.split(/,\s*/).filter(Boolean) : [];
+        const active = names.filter(n => !eliminated.has((n || "").toLowerCase()));
+        const meOut = eliminated.has((myNameCanonical || "").toLowerCase());
+        const canVote = !meOut;
+        hint.textContent = (ui.vote_hint || "Choose who to eliminate this round.") + (state.vote_quota ? ` (${state.vote_quota} will leave)` : "");
+
+        active.forEach(name => {
+            if ((name || "").toLowerCase() === (myNameCanonical || "").toLowerCase()) return; // cannot vote self
+            const btn = document.createElement("button");
+            btn.className = "min-h-[36px] bg-red-700 hover:bg-red-600 disabled:opacity-50 px-3 py-1 rounded text-sm";
+            btn.textContent = name;
+            btn.disabled = !canVote;
+            btn.onclick = () => {
+                ws.send(JSON.stringify({ type: "vote_eliminate", target: name }));
+                // Optimistically disable buttons to prevent double votes
+                Array.from(list.querySelectorAll("button")).forEach(b => b.disabled = true);
+                log(`🗳️ ${ui.you_voted || "You voted"}: ${name}`);
+            };
+            list.appendChild(btn);
         });
     }
 
