@@ -408,9 +408,17 @@
         const active = names.filter(n => !eliminated.has((n || "").toLowerCase()));
         const meOut = eliminated.has((myNameCanonical || "").toLowerCase());
         const canVote = !meOut;
-        hint.textContent = (ui.vote_hint || "Choose who to eliminate this round.") + (state.vote_quota ? ` (${state.vote_quota} will leave)` : "");
+        const inRevote = Array.isArray(state.revote_targets) && state.revote_targets.length > 0;
+        const revoteSet = new Set((state.revote_targets || []).map(n => (n || "").toLowerCase()));
+        const effectiveQuota = (state.revote_quota && state.revote_quota > 0) ? state.revote_quota : state.vote_quota;
+        if (inRevote) {
+            hint.textContent = (ui.vote_hint || "Choose who to eliminate this round.") + ` — revote among tied players` + (effectiveQuota ? ` (${effectiveQuota} will leave)` : "");
+        } else {
+            hint.textContent = (ui.vote_hint || "Choose who to eliminate this round.") + (effectiveQuota ? ` (${effectiveQuota} will leave)` : "");
+        }
 
-        active.forEach(name => {
+        const displayNames = inRevote ? active.filter(n => revoteSet.has((n || "").toLowerCase())) : active;
+        displayNames.forEach(name => {
             if ((name || "").toLowerCase() === (myNameCanonical || "").toLowerCase()) return; // cannot vote self
             const btn = document.createElement("button");
             btn.className = "min-h-[36px] bg-red-700 hover:bg-red-600 disabled:opacity-50 px-3 py-1 rounded text-sm";
