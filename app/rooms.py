@@ -11,7 +11,7 @@ PHASE_GAME_OVER = "game_over"
 
 
 def _gen_room_code() -> str:
-    # "пару цифр" but still practical: 4 digits
+    #  4 digits
     return str(random.randint(1000, 9999))
 
 
