@@ -7,6 +7,7 @@ REVEAL_KEYS = ["profession", "health", "age", "gender", "hobby", "phobia", "item
 PHASE_LOBBY = "lobby"
 PHASE_REVEAL = "reveal"
 PHASE_CONFIRM = "confirm"
+PHASE_VOTE = "vote"
 PHASE_GAME_OVER = "game_over"
 
 
@@ -33,6 +34,9 @@ def create_room(default_lang: str) -> str:
 
                 "round_reveals": {},     # pid -> key
                 "round_confirms": set(), # pid -> confirmed
+                "round_votes": {},       # pid -> target_pid
+                "eliminated": set(),     # set of pids eliminated
+                "elim_plan": None,       # list[int] of eliminations per rounds 3..7
             }
             return code
     # fallback (extremely unlikely)
@@ -47,5 +51,8 @@ def create_room(default_lang: str) -> str:
         "start_votes": set(),
         "round_reveals": {},
         "round_confirms": set(),
+        "round_votes": {},
+        "eliminated": set(),
+        "elim_plan": None,
     }
     return code
