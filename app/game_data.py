@@ -47,6 +47,7 @@ GAME_DATA = {
             "vote_hint": "Choose who to eliminate this round.",
             "you_are_out": "You are out. You can observe but not participate.",
             "congrats_winner": "Congratulations, {name}! You made it into the bunker.",
+            "congrats_winners_two": "Congratulations, {name1} and {name2}! You both made it into the bunker.",
         },
         "labels": {
             "profession": "Profession",
@@ -207,6 +208,7 @@ GAME_DATA = {
             "vote_hint": "Выберите, кого исключить в этом раунде.",
             "you_are_out": "Вы выбыли. Вы можете наблюдать, но не участвовать.",
             "congrats_winner": "Поздравляем, {name}! Вы попали в бункер.",
+            "congrats_winners_two": "Поздравляем, {name1} и {name2}! Вы оба попали в бункер.",
         },
         "labels": {
             "profession": "Профессия",
@@ -367,6 +369,7 @@ GAME_DATA = {
             "vote_hint": "Избери кого да елиминираме този рунд.",
             "you_are_out": "Отпадаш. Можеш да наблюдаваш, но не и да участваш.",
             "congrats_winner": "Поздравления, {name}! Ти влизаш в бункера.",
+            "congrats_winners_two": "Поздравления, {name1} и {name2}! И двамата влизате в бункера.",
         },
         "labels": {
             "profession": "Професия",
