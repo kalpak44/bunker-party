@@ -40,6 +40,7 @@ GAME_DATA = {
             "all_cards_used": "All cards are revealed. Thanks for playing!",
             "disconnected": "Disconnected",
             "error": "Error",
+            "too_many_players": "Too many players for the available cards. Max players: {n}",
         },
         "labels": {
             "profession": "Profession",
@@ -193,6 +194,7 @@ GAME_DATA = {
             "all_cards_used": "Все карты раскрыты. Спасибо за игру!",
             "disconnected": "Соединение потеряно",
             "error": "Ошибка",
+            "too_many_players": "Слишком много игроков для доступных карт. Максимум игроков: {n}",
         },
         "labels": {
             "profession": "Профессия",
@@ -346,6 +348,7 @@ GAME_DATA = {
             "all_cards_used": "Всички карти са разкрити. Благодаря!",
             "disconnected": "Връзката прекъсна",
             "error": "Грешка",
+            "too_many_players": "Твърде много играчи спрямо наличните карти. Максимален брой играчи: {n}",
         },
         "labels": {
             "profession": "Професия",

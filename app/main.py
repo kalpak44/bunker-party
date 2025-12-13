@@ -34,6 +34,25 @@ def create(lang: str):
     return {"room_id": create_room(lang)}
 
 
+def compute_unique_capacity() -> int:
+    """
+    Compute the maximum number of players that can join a room while
+    preserving uniqueness per card key across the room.
+
+    It's the minimum, over all reveal keys, of the count of unique card
+    values available for that key across all languages.
+    """
+    min_unique = None
+    for k in REVEAL_KEYS:
+        union_vals = set()
+        for gd in GAME_DATA.values():
+            union_vals.update(gd["cards"].get(k, []))
+        cnt = len(union_vals)
+        if min_unique is None or cnt < min_unique:
+            min_unique = cnt
+    return min_unique or 0
+
+
 def make_character_for_room(room: dict, lang: str) -> dict[str, str]:
     """
     Create a character for a player ensuring no duplicate card values per key within the room.
@@ -111,6 +130,7 @@ async def broadcast_state(room: dict):
         "round": room["round"],
         "event_idx": room["event_idx"],
         "players_total": len(room["players"]),
+        "capacity": compute_unique_capacity(),
         "start_votes": len(room["start_votes"]),
         "reveals_done": len(room["round_reveals"]),
         "confirms_done": len(room["round_confirms"]),
@@ -212,6 +232,23 @@ async def ws_room(ws: WebSocket, room_id: str):
         if name.casefold() in existing:
             await safe_send(ws, {"type": "error", "code": "name_taken", "message": ui["name_taken"]})
             await ws.close(code=1008)
+            return
+
+        # capacity guard: refuse join if players exceed unique cards availability
+        capacity = compute_unique_capacity()
+        if len(room["players"]) >= capacity:
+            message_tpl = ui.get("too_many_players") or ui.get("error", "Error")
+            try:
+                message = message_tpl.format(n=capacity)
+            except Exception:
+                message = message_tpl
+            await safe_send(ws, {
+                "type": "error",
+                "code": "too_many_players",
+                "message": message,
+                "max_players": capacity,
+            })
+            await ws.close(code=1013)
             return
 
         try:
