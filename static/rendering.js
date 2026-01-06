@@ -89,9 +89,10 @@ export function renderRevealed() {
 
         if (!entries.length) html += `<div class="text-sm text-gray-500">—</div>`;
         else entries.forEach(([k, v]) => {
+            // Labels are already localized from the backend
             html += `
                 <div class="text-sm flex justify-between gap-3">
-                    <div class="text-gray-400">${escapeHtml(state.labels[k] || k)}</div>
+                    <div class="text-gray-400">${escapeHtml(k)}</div>
                     <div class="font-medium">${escapeHtml(v)}</div>
                 </div>`;
         });
