@@ -179,6 +179,14 @@ function joinRoom(room) {
     ws.onclose = () => {
         log(ui.disconnected || "Disconnected");
         // Don't clear session on disconnect - allow reconnection
+
+        // Attempt to reconnect after a short delay
+        setTimeout(() => {
+            if (myName && currentRoomId) {
+                log(ui.reconnecting || "Reconnecting...");
+                joinRoom(currentRoomId);
+            }
+        }, 2000);
     };
 
     ws.onerror = () => {
