@@ -54,21 +54,36 @@ window.addEventListener('DOMContentLoaded', () => {
         $("name").value = session.name;
     }
 
-    // Auto-reconnect if we have a saved session with both name and room
-    if (session.name && session.room && !roomParam) {
-        // Attempt to reconnect to saved session
-        currentRoomId = session.room;
-        myName = session.name;
-        myLang = session.lang;
+    // Auto-reconnect logic
+    if (session.name && session.room) {
+        // If URL has room param and it matches saved session, auto-reconnect
+        if (roomParam && roomParam === session.room) {
+            currentRoomId = session.room;
+            myName = session.name;
+            myLang = session.lang;
 
-        // Try to reconnect in the background
-        setTimeout(() => {
-            joinRoom(session.room);
-        }, 100);
-        return;
+            // Automatically reconnect
+            setTimeout(() => {
+                joinRoom(session.room);
+            }, 100);
+            return;
+        }
+
+        // If no room param but we have a saved session, auto-reconnect
+        if (!roomParam) {
+            currentRoomId = session.room;
+            myName = session.name;
+            myLang = session.lang;
+
+            // Automatically reconnect
+            setTimeout(() => {
+                joinRoom(session.room);
+            }, 100);
+            return;
+        }
     }
 
-    // If URL has room param, prepare to join that room
+    // If URL has room param (but no matching session), prepare to join that room
     if (roomParam && /^\d{4}$/.test(roomParam)) {
         currentRoomId = roomParam;
         // Update button text to show we're joining a specific room
