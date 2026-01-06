@@ -63,7 +63,7 @@ $("copyBtn").onclick = async () => {
 
 $("copyLinkBtn").onclick = async () => {
     await navigator.clipboard.writeText($("shareLink").value);
-    log("Link copied!");
+    log(ui.copied || "Copied");
 };
 
 $("create").onclick = async () => {
@@ -163,6 +163,7 @@ function joinRoom(room) {
         }
 
         if (m.type === "players") {
+            // Simple list first, will be enriched with online status from state updates
             $("players").textContent = `${ui.players}: ${m.players.join(", ")}`;
             log(`${ui.players}: ${m.players.join(", ")}`);
         }
@@ -178,6 +179,14 @@ function joinRoom(room) {
 
         if (m.type === "player_reveal") {
             log(`🔓 ${m.player} — ${labels[m.key] || m.key}: ${m.value}`);
+        }
+
+        if (m.type === "player_reconnected") {
+            log(`🔌 ${m.player} ${ui.player_reconnected || "reconnected"}`);
+        }
+
+        if (m.type === "player_disconnected") {
+            log(`⚠️ ${m.player} ${ui.player_disconnected || "disconnected"}`);
         }
 
         if (m.type === "game_over") {
@@ -238,6 +247,8 @@ function joinRoom(room) {
             renderCards();
             renderRevealed();
             renderVote();
+            renderPlayers();
+            renderSkipButton();
 
             // Show eliminated state for me
             const meOut = (state.eliminated_names || []).some(n => (n || "").toLowerCase() === (myNameCanonical || "").toLowerCase());
@@ -361,4 +372,71 @@ function renderRevealed() {
         box.innerHTML = html;
         root.appendChild(box);
     });
+}
+
+function renderPlayers() {
+    if (!state.online_status) return;
+
+    // Get player names from revealed state (all players)
+    const playerNames = Object.keys(state.revealed || {});
+    const onlineStatus = state.online_status || {};
+
+    // Build player list with status indicators
+    const playerList = playerNames.map(name => {
+        const isOnline = onlineStatus[name] !== false;
+        const indicator = isOnline ? "🟢" : "🔴";
+        return `${indicator} ${name}`;
+    }).join(", ");
+
+    $("players").textContent = `${ui.players}: ${playerList}`;
+}
+
+function renderSkipButton() {
+    // Only show skip button during phases where actions are required
+    const relevantPhase = state.phase === "reveal" || state.phase === "confirm" || state.phase === "vote";
+    if (!relevantPhase) {
+        $("skipBtn")?.classList.add("hidden");
+        return;
+    }
+
+    // Check if there are offline players blocking progress
+    const onlineStatus = state.online_status || {};
+    const eliminatedSet = new Set((state.eliminated_names || []).map(n => n.toLowerCase()));
+    const allPlayers = Object.keys(onlineStatus);
+    const activePlayers = allPlayers.filter(name => !eliminatedSet.has(name.toLowerCase()));
+    const offlinePlayers = activePlayers.filter(name => !onlineStatus[name]);
+
+    // Check if progress is blocked
+    let blocked = false;
+    if (state.phase === "reveal") {
+        blocked = state.reveals_done < state.players_total;
+    } else if (state.phase === "confirm") {
+        blocked = state.confirms_done < state.players_total;
+    } else if (state.phase === "vote") {
+        blocked = (state.votes_done || 0) < state.players_total;
+    }
+
+    // Show skip button if offline players exist and progress is blocked
+    const shouldShow = offlinePlayers.length > 0 && blocked;
+    const skipBtn = $("skipBtn");
+
+    if (!skipBtn && shouldShow) {
+        // Create skip button if it doesn't exist
+        const btn = document.createElement("button");
+        btn.id = "skipBtn";
+        btn.className = "w-full min-h-[44px] bg-amber-600 hover:bg-amber-500 py-2 rounded font-semibold";
+        btn.textContent = `${ui.skip_inactive_player || "Skip inactive player"} (${state.skip_votes || 0}/${state.players_total})`;
+        btn.onclick = () => {
+            ws.send(JSON.stringify({ type: "skip_inactive" }));
+            log(`⏭️ ${ui.skip_inactive_player || "Voted to skip"}`);
+        };
+        // Insert after confirm button or in status area
+        const statusArea = $("confirm").parentElement;
+        statusArea.appendChild(btn);
+    } else if (skipBtn) {
+        skipBtn.classList.toggle("hidden", !shouldShow);
+        if (shouldShow) {
+            skipBtn.textContent = `${ui.skip_inactive_player || "Skip inactive player"} (${state.skip_votes || 0}/${state.players_total})`;
+        }
+    }
 }

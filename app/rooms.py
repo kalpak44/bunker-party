@@ -26,6 +26,7 @@ def create_room(default_lang: str) -> str:
                 "default_lang": default_lang,
 
                 "players": {},  # pid -> player dict
+                "pid_by_name": {},  # name.casefold() -> pid (for reconnection)
                 "phase": PHASE_LOBBY,
                 "round": 0,
                 "event_idx": None,
@@ -37,6 +38,7 @@ def create_room(default_lang: str) -> str:
                 "round_votes": {},       # pid -> target_pid
                 "eliminated": set(),     # set of pids eliminated
                 "elim_plan": None,       # list[int] of eliminations per rounds 3..7
+                "skip_votes": set(),     # set of pids voting to skip inactive player
             }
             return code
     # fallback (extremely unlikely)
@@ -45,6 +47,7 @@ def create_room(default_lang: str) -> str:
         "room_id": code,
         "default_lang": default_lang,
         "players": {},
+        "pid_by_name": {},
         "phase": PHASE_LOBBY,
         "round": 0,
         "event_idx": None,
@@ -54,5 +57,6 @@ def create_room(default_lang: str) -> str:
         "round_votes": {},
         "eliminated": set(),
         "elim_plan": None,
+        "skip_votes": set(),
     }
     return code
