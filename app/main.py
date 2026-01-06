@@ -163,6 +163,15 @@ async def broadcast_state(room: dict):
         elif room["phase"] == PHASE_VOTE:
             player_action_done = pid in room.get("round_votes", {})
 
+        # Localize revealed card labels for this player
+        recipient_lang = p["lang"]
+        localized_labels = GAME_DATA[recipient_lang]["labels"]
+        revealed_localized = {}
+        for player_name, cards in [(pl["name"], pl["revealed"]) for pl in room["players"].values()]:
+            revealed_localized[player_name] = {
+                localized_labels.get(k, k): v for k, v in cards.items()
+            }
+
         await safe_send(p["ws"], {
             "type": "state",
             "phase": room["phase"],
@@ -180,7 +189,7 @@ async def broadcast_state(room: dict):
             "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
             "revote_quota": int(room.get("revote_quota") or 0),
             "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
-            "revealed": {p["name"]: p["revealed"] for p in room["players"].values()},
+            "revealed": revealed_localized,
             "online_status": online_status,
             "player_action_done": player_action_done,
         })
@@ -478,12 +487,17 @@ async def ws_room(ws: WebSocket, room_id: str):
                 p["revealed"][key] = p["character"][key]
                 room["round_reveals"][pid] = key
 
-                await broadcast(room, {
-                    "type": "player_reveal",
-                    "player": p["name"],
-                    "key": key,
-                    "value": p["character"][key],
-                })
+                # Send localized reveal message to each player
+                for recipient in list(room["players"].values()):
+                    recipient_lang = recipient["lang"]
+                    localized_key = GAME_DATA[recipient_lang]["labels"].get(key, key)
+                    localized_value = p["character"][key]  # Value stays the same (it's already in the revealer's language)
+                    await safe_send(recipient["ws"], {
+                        "type": "player_reveal",
+                        "player": p["name"],
+                        "key": localized_key,
+                        "value": localized_value,
+                    })
 
                 # if all active players revealed, go confirm
                 if len([x for x in room["round_reveals"].keys() if x in active_pids(room)]) == len(active_pids(room)) and len(active_pids(room)) > 0:
