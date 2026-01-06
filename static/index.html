@@ -5,6 +5,7 @@
     <title>Bunker Party</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 
 <body class="bg-gray-900 text-white min-h-screen p-3 sm:p-6">
@@ -99,6 +100,19 @@
                     </button>
                 </div>
 
+                <div class="flex items-center gap-2">
+                    <input id="shareLink"
+                           readonly
+                           class="flex-1 px-2 py-1 text-xs text-black rounded bg-gray-100 font-mono"
+                           value=""/>
+                    <button id="copyLinkBtn"
+                            class="min-h-[32px] bg-gray-700 px-2 py-1 rounded text-xs whitespace-nowrap">
+                        Copy Link
+                    </button>
+                </div>
+
+                <div id="qrcode" class="bg-white p-2 rounded mx-auto w-fit"></div>
+
                 <div id="players" class="text-sm text-gray-300"></div>
             </div>
 
@@ -141,8 +155,23 @@
     let myNameCanonical = "";
     let hasStarted = false;
     let revealedThisRound = false;
+    let currentRoomId = "";
 
     const $ = (id) => document.getElementById(id);
+
+    // Parse query parameters on load
+    function getQueryParam(name) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name);
+    }
+
+    // Auto-join logic
+    window.addEventListener('DOMContentLoaded', () => {
+        const roomParam = getQueryParam('room');
+        if (roomParam && /^\d{4}$/.test(roomParam)) {
+            $("room").value = roomParam;
+        }
+    });
 
     function showMainError(text) {
         $("mainError").classList.remove("hidden");
@@ -177,6 +206,11 @@
     $("copyBtn").onclick = async () => {
         await navigator.clipboard.writeText($("roomCode").textContent);
         log(ui.copied || "Copied");
+    };
+
+    $("copyLinkBtn").onclick = async () => {
+        await navigator.clipboard.writeText($("shareLink").value);
+        log("Link copied!");
     };
 
     $("create").onclick = async () => {
@@ -235,6 +269,7 @@
                 labels = m.labels;
                 character = m.character;
                 myNameCanonical = m.player_name;
+                currentRoomId = m.room_id;
 
                 $("title").textContent = ui.title;
                 $("create").textContent = ui.create_new_game;
@@ -255,6 +290,22 @@
 
                 $("roomCode").textContent = m.room_id;
                 log(`${ui.room_code}: ${m.room_id}`);
+
+                // Generate shareable link and QR code
+                const shareableLink = `${location.protocol}//${location.host}/?room=${m.room_id}`;
+                $("shareLink").value = shareableLink;
+
+                // Clear previous QR code if any
+                $("qrcode").innerHTML = "";
+                new QRCode($("qrcode"), {
+                    text: shareableLink,
+                    width: 128,
+                    height: 128,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+
                 renderCards();
             }
 
