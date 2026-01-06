@@ -1,7 +1,53 @@
 import { state } from './state.js';
 import { $, log, showMainError, protoWs } from './utils.js';
 import { saveSession, clearSession } from './storage.js';
-import { renderCards, renderRevealed, renderVote, renderPlayers } from './rendering.js';
+import { renderAll } from './rendering.js';
+
+// Request ID counter for request/response pattern
+let requestId = 0;
+
+// Helper to send a request and wait for response
+function sendRequest(type, data = {}) {
+    return new Promise((resolve, reject) => {
+        const id = ++requestId;
+        state.pendingRequests.set(id, { resolve, reject });
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+            if (state.pendingRequests.has(id)) {
+                state.pendingRequests.delete(id);
+                reject(new Error('Request timeout'));
+            }
+        }, 5000);
+
+        state.ws.send(JSON.stringify({ ...data, type, requestId: id }));
+    });
+}
+
+// Exported request functions
+export async function getUI() {
+    return sendRequest('get_ui');
+}
+
+export async function getCharacter() {
+    return sendRequest('get_character');
+}
+
+export async function getLogs() {
+    return sendRequest('get_logs');
+}
+
+export async function getPlayers() {
+    return sendRequest('get_players');
+}
+
+export async function getRevealed() {
+    return sendRequest('get_revealed');
+}
+
+export async function getGameState() {
+    return sendRequest('get_game_state');
+}
 
 export function joinRoom(room) {
     const wsUrl = `${protoWs()}://${location.host}/ws/${room}`;
@@ -50,19 +96,24 @@ export function joinRoom(room) {
     state.ws.onmessage = handleMessage;
 }
 
-function handleMessage(e) {
+async function handleMessage(e) {
     const m = JSON.parse(e.data);
 
+    // Handle request/response pattern
+    if (m.requestId && state.pendingRequests.has(m.requestId)) {
+        const { resolve } = state.pendingRequests.get(m.requestId);
+        state.pendingRequests.delete(m.requestId);
+        resolve(m);
+        return;
+    }
+
     if (m.type === "error") {
-        const msg = m.message || state.ui.error || "Error";
+        const msg = m.message || "Error";
         log("⚠️ " + msg);
         $("game").classList.add("hidden");
         $("main").classList.remove("hidden");
         showMainError(msg);
-
-        // Clear session on error (e.g., room doesn't exist, game started, etc.)
         clearSession();
-
         try { state.ws.close(); } catch {}
         return;
     }
@@ -72,76 +123,36 @@ function handleMessage(e) {
         return;
     }
 
-    if (m.type === "players") {
-        // Simple list first, will be enriched with online status from state updates
-        $("players").textContent = `${state.ui.players}: ${m.players.join(", ")}`;
-        log(`${state.ui.players}: ${m.players.join(", ")}`);
-    }
-
-    if (m.type === "bunker_event") {
-        state.hasStarted = true;
-        state.revealedThisRound = false;
-        $("round").textContent = `${state.ui.round}: ${m.round}`;
-        $("bunker").textContent = `${state.ui.bunker_event}: ${m.event}`;
-        log(`🏠 ${state.ui.round} ${m.round}: ${m.event}`);
-        renderCards();
-    }
-
-    if (m.type === "player_reveal") {
-        // Key and value are already localized by the backend
-        log(`🔓 ${m.player} — ${m.key}: ${m.value}`);
-    }
-
-    if (m.type === "player_reconnected") {
-        const msg = (state.ui.player_reconnected || "{name} reconnected").replace("{name}", m.player);
-        log(`🔌 ${msg}`);
-    }
-
-    if (m.type === "player_disconnected") {
-        const msg = (state.ui.player_disconnected || "{name} disconnected").replace("{name}", m.player);
-        log(`⚠️ ${msg}`);
-    }
-
-    if (m.type === "game_over") {
-        $("gameOver").classList.remove("hidden");
-        $("gameOver").textContent = m.message || state.ui.game_over;
-        log("🏁 " + $("gameOver").textContent);
-    }
-
-    if (m.type === "state") {
-        handleStateUpdate(m);
+    // Handle refresh notification - fetch and re-render everything
+    if (m.type === "refresh") {
+        await renderAll();
     }
 }
 
-function handleInit(m) {
-    state.ui = m.ui;
-    state.labels = m.labels;
-    state.character = m.character;
-    state.myNameCanonical = m.player_name;
+async function handleInit(m) {
     state.currentRoomId = m.room_id;
 
-    $("title").textContent = state.ui.title;
-    $("name").placeholder = state.ui.your_name;
+    const ui = m.ui;
+    const labels = m.labels;
 
-    $("roomCodeLabel").textContent = state.ui.room_code_label;
-    $("copyLinkBtn").textContent = state.ui.copy;
-    $("logTitle").textContent = state.ui.log_title;
-    $("yourCardsTitle").textContent = state.ui.your_cards;
-    $("revealedCardsTitle").textContent = state.ui.revealed_cards;
-
-    $("startBtn").textContent = state.ui.ready_to_start;
-    $("confirm").textContent = state.ui.confirm_round_end;
-    $("waiting").textContent = state.ui.waiting_opponents;
-    $("voteTitle").textContent = state.ui.phase_vote || "Vote";
+    // Set up UI text
+    $("title").textContent = ui.title;
+    $("name").placeholder = ui.your_name;
+    $("roomCodeLabel").textContent = ui.room_code_label;
+    $("copyLinkBtn").textContent = ui.copy;
+    $("logTitle").textContent = ui.log_title;
+    $("yourCardsTitle").textContent = ui.your_cards;
+    $("revealedCardsTitle").textContent = ui.revealed_cards;
+    $("startBtn").textContent = ui.ready_to_start;
+    $("confirm").textContent = ui.confirm_round_end;
+    $("waiting").textContent = ui.waiting_opponents;
+    $("voteTitle").textContent = ui.phase_vote || "Vote";
 
     $("roomCode").textContent = m.room_id;
-    log(`${state.ui.room_code}: ${m.room_id}`);
 
     // Generate shareable link and QR code
     const shareableLink = `${location.protocol}//${location.host}/?room=${m.room_id}`;
     $("shareLink").value = shareableLink;
-
-    // Clear previous QR code if any
     $("qrcode").innerHTML = "";
     new QRCode($("qrcode"), {
         text: shareableLink,
@@ -152,92 +163,23 @@ function handleInit(m) {
         correctLevel: QRCode.CorrectLevel.M
     });
 
-    renderCards();
-}
-
-function handleStateUpdate(m) {
-    state.gameState = m;
-
-    let phaseText = state.ui.game_over;
-    if (m.phase === "lobby") phaseText = state.ui.phase_lobby;
-    if (m.phase === "reveal") phaseText = state.ui.phase_reveal;
-    if (m.phase === "confirm") phaseText = state.ui.phase_confirm;
-    if (m.phase === "vote") phaseText = state.ui.phase_vote || "Vote";
-    $("phase").textContent = phaseText;
-
-    // Hide start button if player already voted or not in lobby
-    const showStartBtn = m.phase === "lobby" && !m.player_action_done;
-    $("startBtn").classList.toggle("hidden", !showStartBtn);
-
-    // Hide confirm button if player already confirmed, not in confirm phase, or game hasn't started
-    const showConfirmBtn = m.phase === "confirm" && state.hasStarted && !m.player_action_done;
-    $("confirm").classList.toggle("hidden", !showConfirmBtn);
-
-    $("votePanel").classList.toggle("hidden", m.phase !== "vote");
-
-    const waiting =
-        (m.phase === "lobby" && m.start_votes < m.players_total) ||
-        (m.phase === "confirm" && m.confirms_done < m.players_total) ||
-        (m.phase === "vote" && (m.votes_done || 0) < (m.players_total || 0));
-
-    $("waiting").classList.toggle("hidden", !waiting);
-    $("waiting").textContent =
-        m.phase === "lobby" ? (state.ui.waiting_votes || "Waiting for votes...") :
-            m.phase === "confirm" ? (state.ui.waiting_confirms || "Waiting for confirmations...") :
-                (state.ui.waiting_votes || "Waiting for votes...");
-
-    const showMinPlayers = m.phase === "lobby" && (m.players_total || 0) < 3;
-    $("minPlayersHint").classList.toggle("hidden", !showMinPlayers);
-    if (showMinPlayers) {
-        try {
-            const tpl = state.ui.min_players_to_start || "Need at least {n} players to start";
-            $("minPlayersHint").textContent = tpl.replace("{n}", "3");
-        } catch {
-            $("minPlayersHint").textContent = "Need at least 3 players to start";
-        }
-    }
-
-    if (m.phase === "lobby")
-        $("progress").textContent = `${state.ui.ready_to_start}: ${m.start_votes}/${m.players_total}`;
-    else if (m.phase === "reveal")
-        $("progress").textContent = `${state.ui.phase_reveal}: ${m.reveals_done}/${m.players_total}`;
-    else if (m.phase === "confirm")
-        $("progress").textContent = `${state.ui.phase_confirm}: ${m.confirms_done}/${m.players_total}`;
-    else if (m.phase === "vote")
-        $("progress").textContent = `${state.ui.phase_vote || "Vote"}: ${m.votes_done || 0}/${m.players_total}`;
-    else $("progress").textContent = "";
-
-    renderCards();
-    renderRevealed();
-    renderVote();
-    renderPlayers();
-
-    // Show eliminated state for me
-    const meOut = (m.eliminated_names || []).some(n => (n || "").toLowerCase() === (state.myNameCanonical || "").toLowerCase());
-    $("youOut").classList.toggle("hidden", !meOut);
-    if (meOut) {
-        $("youOut").textContent = state.ui.you_are_out || "You are out. You can observe but not participate.";
-    }
+    // Initial render
+    await renderAll();
 }
 
 export function sendVoteStart() {
     state.ws.send(JSON.stringify({ type: "vote_start" }));
-    log("✅ " + (state.ui.you_voted_start || "Voted"));
 }
 
 export function sendConfirmRoundEnd() {
     state.ws.send(JSON.stringify({ type: "confirm_round_end" }));
-    log("✅ " + (state.ui.you_confirmed || "Confirmed"));
 }
 
 export function sendRevealCard(key) {
     state.ws.send(JSON.stringify({ type: "reveal_card", key }));
-    state.revealedThisRound = true;
-    log(`🎴 ${state.ui.you_revealed}: ${state.labels[key] || key}`);
 }
 
 export function sendVoteEliminate(target) {
     state.ws.send(JSON.stringify({ type: "vote_eliminate", target }));
-    log(`🗳️ ${state.ui.you_voted || "You voted"}: ${target}`);
 }
 

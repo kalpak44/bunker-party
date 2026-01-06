@@ -61,13 +61,13 @@ export async function copyLinkToClipboard() {
     try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(link);
-            log(state.ui.copied || "Copied");
+            log("Copied");
         } else {
             // Fallback for browsers without clipboard API
             $("shareLink").select();
             $("shareLink").setSelectionRange(0, 99999); // For mobile devices
             document.execCommand('copy');
-            log(state.ui.copied || "Copied");
+            log("Copied");
         }
     } catch (err) {
         // If all fails, just select the text so user can copy manually
