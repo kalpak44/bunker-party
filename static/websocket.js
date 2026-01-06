@@ -92,11 +92,13 @@ function handleMessage(e) {
     }
 
     if (m.type === "player_reconnected") {
-        log(`🔌 ${m.player} ${state.ui.player_reconnected || "reconnected"}`);
+        const msg = (state.ui.player_reconnected || "{name} reconnected").replace("{name}", m.player);
+        log(`🔌 ${msg}`);
     }
 
     if (m.type === "player_disconnected") {
-        log(`⚠️ ${m.player} ${state.ui.player_disconnected || "disconnected"}`);
+        const msg = (state.ui.player_disconnected || "{name} disconnected").replace("{name}", m.player);
+        log(`⚠️ ${msg}`);
     }
 
     if (m.type === "game_over") {
