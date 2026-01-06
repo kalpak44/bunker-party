@@ -165,11 +165,39 @@
         return params.get(name);
     }
 
+    // Update URL with room and name parameters
+    function updateURL(room, name, lang) {
+        const params = new URLSearchParams();
+        if (room) params.set('room', room);
+        if (name) params.set('name', name);
+        if (lang) params.set('lang', lang);
+        const newURL = `${location.pathname}?${params.toString()}`;
+        history.replaceState({}, '', newURL);
+    }
+
     // Auto-join logic
     window.addEventListener('DOMContentLoaded', () => {
         const roomParam = getQueryParam('room');
+        const nameParam = getQueryParam('name');
+        const langParam = getQueryParam('lang');
+
+        if (nameParam) {
+            $("name").value = decodeURIComponent(nameParam);
+        }
+
+        if (langParam && ['en', 'ru', 'bg'].includes(langParam)) {
+            $("lang").value = langParam;
+        }
+
         if (roomParam && /^\d{4}$/.test(roomParam)) {
             $("room").value = roomParam;
+
+            // Auto-reconnect if both room and name are provided
+            if (nameParam) {
+                setTimeout(() => {
+                    $("join").click();
+                }, 100);
+            }
         }
     });
 
@@ -224,6 +252,7 @@
         const data = await res.json();
 
         $("room").value = data.room_id;
+        updateURL(data.room_id, myName, myLang);
         joinRoom(data.room_id);
     };
 
@@ -236,6 +265,7 @@
         if (!myName) return showMainError("Name is required");
         if (!/^\d{4}$/.test(room)) return showMainError("Room code must be 4 digits");
 
+        updateURL(room, myName, myLang);
         joinRoom(room);
     };
 
@@ -291,8 +321,8 @@
                 $("roomCode").textContent = m.room_id;
                 log(`${ui.room_code}: ${m.room_id}`);
 
-                // Generate shareable link and QR code
-                const shareableLink = `${location.protocol}//${location.host}/?room=${m.room_id}`;
+                // Generate shareable link and QR code with name and lang parameters
+                const shareableLink = `${location.protocol}//${location.host}/?room=${m.room_id}&name=${encodeURIComponent(myName)}&lang=${myLang}`;
                 $("shareLink").value = shareableLink;
 
                 // Clear previous QR code if any
