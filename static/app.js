@@ -9,6 +9,8 @@ let myNameCanonical = "";
 let hasStarted = false;
 let revealedThisRound = false;
 let currentRoomId = "";
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
 
 const $ = (id) => document.getElementById(id);
 
@@ -172,6 +174,9 @@ function joinRoom(room) {
         // Save session to localStorage on successful connection
         saveSession(myName, room, myLang);
 
+        // Reset reconnect attempts on successful connection
+        reconnectAttempts = 0;
+
         $("main").classList.add("hidden");
         $("game").classList.remove("hidden");
     };
@@ -180,13 +185,22 @@ function joinRoom(room) {
         log(ui.disconnected || "Disconnected");
         // Don't clear session on disconnect - allow reconnection
 
-        // Attempt to reconnect after a short delay
-        setTimeout(() => {
-            if (myName && currentRoomId) {
-                log(ui.reconnecting || "Reconnecting...");
-                joinRoom(currentRoomId);
-            }
-        }, 2000);
+        // Attempt to reconnect after a short delay, with a maximum number of attempts
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            setTimeout(() => {
+                if (myName && currentRoomId) {
+                    log(ui.reconnecting || "Reconnecting...");
+                    joinRoom(currentRoomId);
+                }
+            }, 2000);
+        } else {
+            log("Failed to reconnect. Please refresh the page.");
+            clearSession();
+            // Show the main screen
+            $("game").classList.add("hidden");
+            $("main").classList.remove("hidden");
+        }
     };
 
     ws.onerror = () => {
