@@ -325,27 +325,25 @@ async def ws_room(ws: WebSocket, room_id: str):
             await ws.close(code=1008)
             return
 
-        # Check for reconnection (game already started)
-        if room["phase"] != PHASE_LOBBY:
-            # Allow reconnection if player with same name exists (case-insensitive)
-            name_cf = name.casefold()
-            existing_pid = room.get("pid_by_name", {}).get(name_cf)
+        # Check for reconnection - allow in any phase
+        name_cf = name.casefold()
+        existing_pid = room.get("pid_by_name", {}).get(name_cf)
 
-            if existing_pid and existing_pid in room["players"]:
-                # Reconnection allowed
-                pid = existing_pid
-                is_reconnect = True
-                # Update language preference if changed
-                room["players"][pid]["lang"] = lang
-            else:
-                # No matching player found - reject
+        if existing_pid and existing_pid in room["players"]:
+            # Player with same name exists - this is a reconnection
+            pid = existing_pid
+            is_reconnect = True
+            # Update language preference if changed
+            room["players"][pid]["lang"] = lang
+        else:
+            # New player trying to join
+            if room["phase"] != PHASE_LOBBY:
+                # Game already started, no matching player - reject
                 await safe_send(ws, {"type": "error", "code": "game_started", "message": ui["game_started"]})
                 await ws.close(code=1008)
                 return
 
-        # New join in lobby phase
-        if not is_reconnect:
-            # unique name (case-insensitive)
+            # In lobby, check for name uniqueness
             existing = {p["name"].casefold() for p in room["players"].values()}
             if name.casefold() in existing:
                 await safe_send(ws, {"type": "error", "code": "name_taken", "message": ui["name_taken"]})
