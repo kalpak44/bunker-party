@@ -56,11 +56,6 @@ function protoWs() {
     return location.protocol === "https:" ? "wss" : "ws";
 }
 
-$("copyBtn").onclick = async () => {
-    await navigator.clipboard.writeText($("roomCode").textContent);
-    log(ui.copied || "Copied");
-};
-
 $("copyLinkBtn").onclick = async () => {
     await navigator.clipboard.writeText($("shareLink").value);
     log(ui.copied || "Copied");
@@ -131,7 +126,7 @@ function joinRoom(room) {
             $("room").placeholder = ui.room_code_placeholder;
 
             $("roomCodeLabel").textContent = ui.room_code_label;
-            $("copyBtn").textContent = ui.copy;
+            $("copyLinkBtn").textContent = ui.copy;
             $("logTitle").textContent = ui.log_title;
             $("yourCardsTitle").textContent = ui.your_cards;
             $("revealedCardsTitle").textContent = ui.revealed_cards;
