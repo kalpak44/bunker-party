@@ -19,6 +19,7 @@ from app.rooms import (
 from app.game_data import GAME_DATA
 
 ROOM_RE = re.compile(r"^\d{4}$")
+MAX_PLAYERS = 6
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -168,7 +169,7 @@ async def broadcast_state(room: dict):
             "round": room["round"],
             "event_idx": room["event_idx"],
             "players_total": players_total,
-            "capacity": compute_unique_capacity(),
+            "capacity": min(compute_unique_capacity(), MAX_PLAYERS),
             "start_votes": len(room["start_votes"]),
             "reveals_done": reveals_done,
             "confirms_done": confirms_done,
@@ -381,8 +382,8 @@ async def ws_room(ws: WebSocket, room_id: str):
             })
         else:
             # New player joining
-            # capacity guard: refuse join if players exceed unique cards availability
-            capacity = compute_unique_capacity()
+            # capacity guard: refuse join if players exceed unique cards availability or max player limit
+            capacity = min(compute_unique_capacity(), MAX_PLAYERS)
             if len(room["players"]) >= capacity:
                 message_tpl = ui.get("too_many_players") or ui.get("error", "Error")
                 try:
