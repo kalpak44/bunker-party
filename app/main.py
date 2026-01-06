@@ -147,26 +147,42 @@ async def broadcast_state(room: dict):
     # Build online status map
     online_status = {p["name"]: p.get("online", True) for p in room["players"].values()}
 
-    await broadcast(room, {
-        "type": "state",
-        "phase": room["phase"],
-        "round": room["round"],
-        "event_idx": room["event_idx"],
-        "players_total": players_total,
-        "capacity": compute_unique_capacity(),
-        "start_votes": len(room["start_votes"]),
-        "reveals_done": reveals_done,
-        "confirms_done": confirms_done,
-        "votes_done": votes_done,
-        "vote_quota": current_round_quota(room),
-        "skip_votes": len(room.get("skip_votes", set())),
-        # Revote context exposed to clients (names + quota)
-        "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
-        "revote_quota": int(room.get("revote_quota") or 0),
-        "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
-        "revealed": {p["name"]: p["revealed"] for p in room["players"].values()},
-        "online_status": online_status,
-    })
+    # Send personalized state to each player
+    for p in room["players"].values():
+        pid = [k for k, v in room["players"].items() if v == p][0]
+
+        # Check if this player has completed their action for current phase
+        player_action_done = False
+        if room["phase"] == PHASE_LOBBY:
+            player_action_done = pid in room["start_votes"]
+        elif room["phase"] == PHASE_REVEAL:
+            player_action_done = pid in room.get("round_reveals", {})
+        elif room["phase"] == PHASE_CONFIRM:
+            player_action_done = pid in room.get("round_confirms", set())
+        elif room["phase"] == PHASE_VOTE:
+            player_action_done = pid in room.get("round_votes", {})
+
+        await safe_send(p["ws"], {
+            "type": "state",
+            "phase": room["phase"],
+            "round": room["round"],
+            "event_idx": room["event_idx"],
+            "players_total": players_total,
+            "capacity": compute_unique_capacity(),
+            "start_votes": len(room["start_votes"]),
+            "reveals_done": reveals_done,
+            "confirms_done": confirms_done,
+            "votes_done": votes_done,
+            "vote_quota": current_round_quota(room),
+            "skip_votes": len(room.get("skip_votes", set())),
+            # Revote context exposed to clients (names + quota)
+            "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
+            "revote_quota": int(room.get("revote_quota") or 0),
+            "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
+            "revealed": {p["name"]: p["revealed"] for p in room["players"].values()},
+            "online_status": online_status,
+            "player_action_done": player_action_done,
+        })
 
 
 async def send_event_localized(room: dict):

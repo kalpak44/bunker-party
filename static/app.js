@@ -296,8 +296,14 @@ function joinRoom(room) {
             if (state.phase === "vote") phaseText = ui.phase_vote || "Vote";
             $("phase").textContent = phaseText;
 
-            $("startBtn").classList.toggle("hidden", state.phase !== "lobby");
-            $("confirm").classList.toggle("hidden", state.phase !== "confirm" || !hasStarted);
+            // Hide start button if player already voted or not in lobby
+            const showStartBtn = state.phase === "lobby" && !state.player_action_done;
+            $("startBtn").classList.toggle("hidden", !showStartBtn);
+
+            // Hide confirm button if player already confirmed, not in confirm phase, or game hasn't started
+            const showConfirmBtn = state.phase === "confirm" && hasStarted && !state.player_action_done;
+            $("confirm").classList.toggle("hidden", !showConfirmBtn);
+
             $("votePanel").classList.toggle("hidden", state.phase !== "vote");
 
             const waiting =
@@ -332,9 +338,6 @@ function joinRoom(room) {
                 $("progress").textContent = `${ui.phase_vote || "Vote"}: ${state.votes_done || 0}/${state.players_total}`;
             else $("progress").textContent = "";
 
-            $("startBtn").disabled = false;
-            $("confirm").disabled = false;
-
             renderCards();
             renderRevealed();
             renderVote();
@@ -353,13 +356,11 @@ function joinRoom(room) {
 
 $("startBtn").onclick = () => {
     ws.send(JSON.stringify({ type: "vote_start" }));
-    $("startBtn").disabled = true;
     log("✅ " + (ui.you_voted_start || "Voted"));
 };
 
 $("confirm").onclick = () => {
     ws.send(JSON.stringify({ type: "confirm_round_end" }));
-    $("confirm").disabled = true;
     log("✅ " + (ui.you_confirmed || "Confirmed"));
 };
 
