@@ -38,6 +38,8 @@ def create_room(default_lang: str) -> str:
                 "round_votes": {},       # pid -> target_pid
                 "eliminated": set(),     # set of pids eliminated
                 "elim_plan": None,       # list[int] of eliminations per rounds 3..7
+
+                "logs": [],              # structured log entries: {type, timestamp, data}
             }
             return code
     # fallback (extremely unlikely)
@@ -56,5 +58,6 @@ def create_room(default_lang: str) -> str:
         "round_votes": {},
         "eliminated": set(),
         "elim_plan": None,
+        "logs": [],
     }
     return code

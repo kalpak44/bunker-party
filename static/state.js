@@ -1,16 +1,13 @@
-// Global state management
+// Minimal global state - only connection data
 export const state = {
     ws: null,
-    ui: {},
-    labels: {},
-    character: {},
-    gameState: {},
     myName: "",
     myLang: "en",
-    myNameCanonical: "",
-    hasStarted: false,
-    revealedThisRound: false,
     currentRoomId: "",
     reconnectAttempts: 0,
-    MAX_RECONNECT_ATTEMPTS: 3
+    MAX_RECONNECT_ATTEMPTS: 3,
+    // Response handlers for request/response pattern
+    pendingRequests: new Map(),
+    // Track displayed logs to avoid duplicates
+    displayedLogCount: 0
 };

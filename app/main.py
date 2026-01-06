@@ -107,16 +107,87 @@ async def safe_send(ws: WebSocket, msg: dict):
         pass
 
 
+def add_log(room: dict, log_type: str, data: dict):
+    """Add a structured log entry to room logs"""
+    room["logs"].append({
+        "type": log_type,
+        "timestamp": time.time(),
+        "data": data
+    })
+
+
+def get_localized_logs(room: dict, lang: str, limit: int = 50) -> list[str]:
+    """Convert structured logs to localized text messages"""
+    ui = GAME_DATA[lang]["ui"]
+    labels = GAME_DATA[lang]["labels"]
+    cards = GAME_DATA[lang]["cards"]
+
+    messages = []
+    for entry in room["logs"][-limit:]:
+        log_type = entry["type"]
+        data = entry["data"]
+
+        if log_type == "player_joined":
+            messages.append(f"➕ {data['name']}")
+        elif log_type == "room_created":
+            messages.append(f"{ui.get('room_code', 'Room code')}: {data['room_id']}")
+        elif log_type == "round_started":
+            bunker_event = GAME_DATA[lang]["bunkers"][data["event_idx"]]
+            messages.append(f"🏠 {ui['round']} {data['round']}: {bunker_event}")
+        elif log_type == "player_revealed":
+            key = data["key"]
+            card_idx = data["card_idx"]
+            localized_key = labels.get(key, key)
+            localized_value = cards[key][card_idx] if key in cards and card_idx < len(cards[key]) else "?"
+            messages.append(f"🔓 {data['player_name']} — {localized_key}: {localized_value}")
+        elif log_type == "player_reconnected":
+            msg_tpl = ui.get("player_reconnected", "{name} reconnected")
+            messages.append(f"🔌 {msg_tpl.replace('{name}', data['name'])}")
+        elif log_type == "player_disconnected":
+            msg_tpl = ui.get("player_disconnected", "{name} disconnected")
+            messages.append(f"⚠️ {msg_tpl.replace('{name}', data['name'])}")
+        elif log_type == "player_eliminated":
+            messages.append(f"❌ {data['player_name']}")
+        elif log_type == "game_over":
+            winner_count = data.get("winner_count", 0)
+            if winner_count == 1:
+                winner = data.get("winner", "")
+                msg_tpl = ui.get("congrats_winner", "Congratulations, {name}! You made it into the bunker.")
+                try:
+                    message = msg_tpl.format(name=winner)
+                except Exception:
+                    message = msg_tpl
+                messages.append(f"🏁 {message}")
+            elif winner_count == 2:
+                winners = data.get("winners", [])
+                if len(winners) == 2:
+                    msg_tpl = ui.get("congrats_winners_two", "Congratulations, {name1} and {name2}! You both made it into the bunker.")
+                    try:
+                        message = msg_tpl.format(name1=winners[0], name2=winners[1])
+                    except Exception:
+                        message = msg_tpl
+                    messages.append(f"🏁 {message}")
+            else:
+                # All cards used
+                messages.append(f"🏁 {ui['game_over']}. {ui['all_cards_used']}")
+        elif log_type == "vote_start":
+            msg = ui.get("you_voted_start", "Voted to start")
+            messages.append(f"✅ {data['player_name']}: {msg}")
+        elif log_type == "confirm_round":
+            msg = ui.get("you_confirmed", "Confirmed round end")
+            messages.append(f"✅ {data['player_name']}: {msg}")
+
+    return messages
+
+
 async def broadcast(room: dict, msg: dict):
     for p in list(room["players"].values()):
         await safe_send(p["ws"], msg)
 
 
-async def broadcast_players(room: dict):
-    await broadcast(room, {
-        "type": "players",
-        "players": [p["name"] for p in room["players"].values()],
-    })
+async def broadcast_refresh(room: dict):
+    """Notify all clients to refresh their data from backend"""
+    await broadcast(room, {"type": "refresh"})
 
 
 def all_used_all_cards(room: dict) -> bool:
@@ -135,80 +206,13 @@ def name_by_pid(room: dict, pid: str) -> str:
     return p["name"] if p else ""
 
 
-async def broadcast_state(room: dict):
-    act_pids = active_pids(room)
-    # Progress counts should consider only active (not eliminated) players
-    reveals_done = len([pid for pid in room.get("round_reveals", {}).keys() if pid in act_pids])
-    confirms_done = len([pid for pid in room.get("round_confirms", set()) if pid in act_pids])
-    votes_done = len([pid for pid in room.get("round_votes", {}).keys() if pid in act_pids])
-    # players_total is active participants count in current phase
-    players_total = len(act_pids)
-
-    # Build online status map
-    online_status = {p["name"]: p.get("online", True) for p in room["players"].values()}
-
-    # Send personalized state to each player
-    for p in room["players"].values():
-        pid = [k for k, v in room["players"].items() if v == p][0]
-
-        # Check if this player has completed their action for current phase
-        player_action_done = False
-        if room["phase"] == PHASE_LOBBY:
-            player_action_done = pid in room["start_votes"]
-        elif room["phase"] == PHASE_REVEAL:
-            player_action_done = pid in room.get("round_reveals", {})
-        elif room["phase"] == PHASE_CONFIRM:
-            player_action_done = pid in room.get("round_confirms", set())
-        elif room["phase"] == PHASE_VOTE:
-            player_action_done = pid in room.get("round_votes", {})
-
-        # Localize revealed cards for this player (both labels and values)
-        recipient_lang = p["lang"]
-        localized_labels = GAME_DATA[recipient_lang]["labels"]
-        localized_cards = GAME_DATA[recipient_lang]["cards"]
-        revealed_localized = {}
-        for pl in room["players"].values():
-            player_name = pl["name"]
-            revealed_indices = pl.get("revealed_indices", {})
-            revealed_localized[player_name] = {}
-            for key, card_idx in revealed_indices.items():
-                localized_key = localized_labels.get(key, key)
-                # Safely get localized value with bounds checking
-                if key in localized_cards and card_idx < len(localized_cards[key]):
-                    localized_value = localized_cards[key][card_idx]
-                else:
-                    # Fallback to original value if index out of bounds
-                    localized_value = pl.get("revealed", {}).get(key, "")
-                revealed_localized[player_name][localized_key] = localized_value
-
-        await safe_send(p["ws"], {
-            "type": "state",
-            "phase": room["phase"],
-            "round": room["round"],
-            "event_idx": room["event_idx"],
-            "players_total": players_total,
-            "capacity": min(compute_unique_capacity(), MAX_PLAYERS),
-            "start_votes": len(room["start_votes"]),
-            "reveals_done": reveals_done,
-            "confirms_done": confirms_done,
-            "votes_done": votes_done,
-            "vote_quota": current_round_quota(room),
-            # Revote context exposed to clients (names + quota)
-            "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
-            "revote_quota": int(room.get("revote_quota") or 0),
-            "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
-            "revealed": revealed_localized,
-            "online_status": online_status,
-            "player_action_done": player_action_done,
-        })
 
 
 async def send_event_localized(room: dict):
-    # same idx, localized per player
-    for p in list(room["players"].values()):
-        lang = p["lang"]
-        event = GAME_DATA[lang]["bunkers"][room["event_idx"]]
-        await safe_send(p["ws"], {"type": "bunker_event", "round": room["round"], "event": event})
+    # Log round start
+    add_log(room, "round_started", {"round": room["round"], "event_idx": room["event_idx"]})
+    # Notify clients to refresh (they'll fetch localized bunker event)
+    await broadcast_refresh(room)
 
 
 async def start_next_round(room: dict):
@@ -220,11 +224,9 @@ async def start_next_round(room: dict):
 
     if all_used_all_cards(room):
         room["phase"] = PHASE_GAME_OVER
-        # localized game over to each player
-        for p in list(room["players"].values()):
-            ui = GAME_DATA[p["lang"]]["ui"]
-            await safe_send(p["ws"], {"type": "game_over", "message": f'{ui["game_over"]}. {ui["all_cards_used"]}'})
-        await broadcast_state(room)
+        # Log game over
+        add_log(room, "game_over", {"message": "All cards used"})
+        await broadcast_refresh(room)
         return
 
     room["phase"] = PHASE_REVEAL
@@ -240,7 +242,6 @@ async def start_next_round(room: dict):
     room["event_idx"] = random.randrange(n)
 
     await send_event_localized(room)
-    await broadcast_state(room)
 
 
 def compute_elimination_plan(total_players: int) -> dict[int, int]:
@@ -277,29 +278,15 @@ async def declare_winner_if_any(room: dict):
         winner_pid = act[0]
         winner_name = name_by_pid(room, winner_pid)
         room["phase"] = PHASE_GAME_OVER
-        for p in list(room["players"].values()):
-            ui = GAME_DATA[p["lang"]]["ui"]
-            msg_tpl = ui.get("congrats_winner", "Congratulations, {name}! You made it into the bunker.")
-            try:
-                message = msg_tpl.format(name=winner_name)
-            except Exception:
-                message = msg_tpl
-            await safe_send(p["ws"], {"type": "game_over", "message": message})
-        await broadcast_state(room)
+        add_log(room, "game_over", {"winner": winner_name, "winner_count": 1})
+        await broadcast_refresh(room)
         return True
     if len(act) == 2:
         n1 = name_by_pid(room, act[0])
         n2 = name_by_pid(room, act[1])
         room["phase"] = PHASE_GAME_OVER
-        for p in list(room["players"].values()):
-            ui = GAME_DATA[p["lang"]]["ui"]
-            msg_tpl = ui.get("congrats_winners_two", "Congratulations, {name1} and {name2}! You both made it into the bunker.")
-            try:
-                message = msg_tpl.format(name1=n1, name2=n2)
-            except Exception:
-                message = msg_tpl
-            await safe_send(p["ws"], {"type": "game_over", "message": message})
-        await broadcast_state(room)
+        add_log(room, "game_over", {"winners": [n1, n2], "winner_count": 2})
+        await broadcast_refresh(room)
         return True
     return False
 
@@ -391,11 +378,8 @@ async def ws_room(ws: WebSocket, room_id: str):
             room["players"][pid]["last_seen"] = time.time()
             character = room["players"][pid]["character"]
 
-            # Notify others of reconnection
-            await broadcast(room, {
-                "type": "player_reconnected",
-                "player": name,
-            })
+            # Log reconnection
+            add_log(room, "player_reconnected", {"name": name})
         else:
             # New player joining
             # capacity guard: refuse join if players exceed unique cards availability or max player limit
@@ -438,6 +422,8 @@ async def ws_room(ws: WebSocket, room_id: str):
             }
             # Track name -> pid mapping for reconnection
             room["pid_by_name"][name.casefold()] = pid
+            # Log player join
+            add_log(room, "player_joined", {"name": name})
 
         await safe_send(ws, {
             "type": "init",
@@ -448,17 +434,133 @@ async def ws_room(ws: WebSocket, room_id: str):
             "character": character,
         })
 
-        await broadcast_players(room)
-        await broadcast_state(room)
+        # Notify all clients to refresh
+        await broadcast_refresh(room)
 
         while True:
             msg = await ws.receive_json()
             t = msg.get("type")
 
+            # STATE QUERY HANDLERS
+            if t == "get_ui":
+                # Return localized UI strings
+                p = room["players"].get(pid)
+                if p:
+                    lang_data = GAME_DATA[p["lang"]]
+                    ui_with_bunkers = {**lang_data["ui"], "bunkers": lang_data["bunkers"]}
+                    await safe_send(ws, {
+                        "type": "ui_data",
+                        "ui": ui_with_bunkers,
+                        "labels": lang_data["labels"],
+                        "requestId": msg.get("requestId")
+                    })
+
+            elif t == "get_character":
+                # Return player's character cards (localized)
+                p = room["players"].get(pid)
+                if p:
+                    await safe_send(ws, {
+                        "type": "character_data",
+                        "character": p["character"],
+                        "requestId": msg.get("requestId")
+                    })
+
+            elif t == "get_logs":
+                # Return localized logs
+                p = room["players"].get(pid)
+                if p:
+                    logs = get_localized_logs(room, p["lang"])
+                    await safe_send(ws, {
+                        "type": "logs_data",
+                        "logs": logs,
+                        "requestId": msg.get("requestId")
+                    })
+
+            elif t == "get_players":
+                # Return player list with online status
+                player_list = []
+                for player in room["players"].values():
+                    player_list.append({
+                        "name": player["name"],
+                        "online": player.get("online", True)
+                    })
+                await safe_send(ws, {
+                    "type": "players_data",
+                    "players": player_list,
+                    "requestId": msg.get("requestId")
+                })
+
+            elif t == "get_revealed":
+                # Return all revealed cards (localized for requesting player)
+                p = room["players"].get(pid)
+                if p:
+                    recipient_lang = p["lang"]
+                    localized_labels = GAME_DATA[recipient_lang]["labels"]
+                    localized_cards = GAME_DATA[recipient_lang]["cards"]
+                    revealed_localized = {}
+                    for pl in room["players"].values():
+                        player_name = pl["name"]
+                        revealed_indices = pl.get("revealed_indices", {})
+                        revealed_localized[player_name] = {}
+                        for key, card_idx in revealed_indices.items():
+                            localized_key = localized_labels.get(key, key)
+                            if key in localized_cards and card_idx < len(localized_cards[key]):
+                                localized_value = localized_cards[key][card_idx]
+                            else:
+                                localized_value = pl.get("revealed", {}).get(key, "")
+                            revealed_localized[player_name][localized_key] = localized_value
+                    await safe_send(ws, {
+                        "type": "revealed_data",
+                        "revealed": revealed_localized,
+                        "requestId": msg.get("requestId")
+                    })
+
+            elif t == "get_game_state":
+                # Return full game state (localized)
+                p = room["players"].get(pid)
+                if p:
+                    act_pids = active_pids(room)
+                    reveals_done = len([pid for pid in room.get("round_reveals", {}).keys() if pid in act_pids])
+                    confirms_done = len([pid for pid in room.get("round_confirms", set()) if pid in act_pids])
+                    votes_done = len([pid for pid in room.get("round_votes", {}).keys() if pid in act_pids])
+                    players_total = len(act_pids)
+
+                    player_action_done = False
+                    if room["phase"] == PHASE_LOBBY:
+                        player_action_done = pid in room["start_votes"]
+                    elif room["phase"] == PHASE_REVEAL:
+                        player_action_done = pid in room.get("round_reveals", {})
+                    elif room["phase"] == PHASE_CONFIRM:
+                        player_action_done = pid in room.get("round_confirms", set())
+                    elif room["phase"] == PHASE_VOTE:
+                        player_action_done = pid in room.get("round_votes", {})
+
+                    await safe_send(ws, {
+                        "type": "game_state_data",
+                        "phase": room["phase"],
+                        "round": room["round"],
+                        "event_idx": room["event_idx"],
+                        "players_total": players_total,
+                        "capacity": min(compute_unique_capacity(), MAX_PLAYERS),
+                        "start_votes": len(room["start_votes"]),
+                        "reveals_done": reveals_done,
+                        "confirms_done": confirms_done,
+                        "votes_done": votes_done,
+                        "vote_quota": current_round_quota(room),
+                        "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
+                        "revote_quota": int(room.get("revote_quota") or 0),
+                        "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
+                        "player_action_done": player_action_done,
+                        "requestId": msg.get("requestId")
+                    })
+
             # VOTE START
-            if t == "vote_start" and room["phase"] == PHASE_LOBBY:
+            elif t == "vote_start" and room["phase"] == PHASE_LOBBY:
                 room["start_votes"].add(pid)
-                await broadcast_state(room)
+                p = room["players"].get(pid)
+                if p:
+                    add_log(room, "vote_start", {"player_name": p["name"]})
+                await broadcast_refresh(room)
 
                 # Require unanimous votes AND a minimum of 3 players to start
                 if (
@@ -497,26 +599,19 @@ async def ws_room(ws: WebSocket, room_id: str):
                 p["revealed_indices"][key] = p["character_indices"][key]
                 room["round_reveals"][pid] = key
 
-                # Send localized reveal message to each player
+                # Log reveal
                 card_idx = p["character_indices"][key]
-                for recipient in list(room["players"].values()):
-                    recipient_lang = recipient["lang"]
-                    localized_key = GAME_DATA[recipient_lang]["labels"].get(key, key)
-                    # Translate card value using the card index
-                    localized_value = GAME_DATA[recipient_lang]["cards"][key][card_idx]
-                    await safe_send(recipient["ws"], {
-                        "type": "player_reveal",
-                        "player": p["name"],
-                        "key": localized_key,
-                        "value": localized_value,
-                    })
+                add_log(room, "player_revealed", {
+                    "player_name": p["name"],
+                    "key": key,
+                    "card_idx": card_idx
+                })
 
                 # if all active players revealed, go confirm
                 if len([x for x in room["round_reveals"].keys() if x in active_pids(room)]) == len(active_pids(room)) and len(active_pids(room)) > 0:
                     room["phase"] = PHASE_CONFIRM
-                    await broadcast(room, {"type": "phase", "phase": PHASE_CONFIRM})
 
-                await broadcast_state(room)
+                await broadcast_refresh(room)
 
             # CONFIRM ROUND END
             elif t == "confirm_round_end" and room["phase"] == PHASE_CONFIRM:
@@ -524,15 +619,17 @@ async def ws_room(ws: WebSocket, room_id: str):
                 if pid in room.get("eliminated", set()):
                     continue
                 room["round_confirms"].add(pid)
-                await broadcast_state(room)
+                p = room["players"].get(pid)
+                if p:
+                    add_log(room, "confirm_round", {"player_name": p["name"]})
+                await broadcast_refresh(room)
 
                 # If all active confirmed, either start vote (from round 3) or next round
                 if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)) and len(active_pids(room)) > 0:
                     if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 2:
                         room["phase"] = PHASE_VOTE
                         room["round_votes"] = {}
-                        await broadcast(room, {"type": "phase", "phase": PHASE_VOTE})
-                        await broadcast_state(room)
+                        await broadcast_refresh(room)
                     else:
                         await start_next_round(room)
 
@@ -563,7 +660,7 @@ async def ws_room(ws: WebSocket, room_id: str):
                 if target_pid == pid:
                     continue
                 room["round_votes"][pid] = target_pid
-                await broadcast_state(room)
+                await broadcast_refresh(room)
 
                 # If all active voted, tally
                 if len([x for x in room["round_votes"].keys() if x in active_pids(room)]) == len(active_pids(room)):
@@ -607,7 +704,7 @@ async def ws_room(ws: WebSocket, room_id: str):
                         room["revote_targets"] = set(top_group)
                         room["revote_quota"] = quota
                         room["round_votes"] = {}
-                        await broadcast_state(room)
+                        await broadcast_refresh(room)
                         continue
 
                     # No need for revote; eliminate by ranking deterministically within remaining slots
@@ -618,15 +715,7 @@ async def ws_room(ws: WebSocket, room_id: str):
                     for ep in to_eliminate:
                         room.setdefault("eliminated", set()).add(ep)
                         pname = room["players"][ep]["name"]
-                        # notify all (log purpose)
-                        await broadcast(room, {"type": "eliminated_info", "player": pname})
-                        # notify eliminated personally
-                        try:
-                            ui = GAME_DATA[room["players"][ep]["lang"]]["ui"]
-                            txt = ui.get("you_are_out", "You are out. You can observe but not participate.")
-                            await safe_send(room["players"][ep]["ws"], {"type": "eliminated", "message": txt})
-                        except Exception:
-                            pass
+                        add_log(room, "player_eliminated", {"player_name": pname})
 
                     # clear revote context once resolved
                     room.pop("revote_targets", None)
@@ -650,12 +739,9 @@ async def ws_room(ws: WebSocket, room_id: str):
                 room["players"][pid]["last_seen"] = time.time()
                 room["players"][pid]["ws"] = None
 
-                # Notify others of disconnection
+                # Log disconnection
                 player_name = room["players"][pid]["name"]
-                await broadcast(room, {
-                    "type": "player_disconnected",
-                    "player": player_name,
-                })
+                add_log(room, "player_disconnected", {"name": player_name})
 
             # Clean up room if all players are offline for more than 5 minutes
             all_offline = all(not p.get("online", True) for p in room["players"].values())
@@ -685,5 +771,4 @@ async def ws_room(ws: WebSocket, room_id: str):
                         await start_next_round(room)
                         return
 
-                await broadcast_players(room)
-                await broadcast_state(room)
+                await broadcast_refresh(room)
