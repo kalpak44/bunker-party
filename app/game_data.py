@@ -51,7 +51,6 @@ GAME_DATA = {
             "player_offline": "{name} is offline",
             "player_reconnected": "{name} reconnected",
             "player_disconnected": "{name} disconnected",
-            "skip_inactive_player": "Skip inactive player",
             "waiting_for_player": "Waiting for {name}",
             "room_code_label": "Room code",
             "online": "Online",
