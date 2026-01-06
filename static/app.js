@@ -57,8 +57,23 @@ function protoWs() {
 }
 
 $("copyLinkBtn").onclick = async () => {
-    await navigator.clipboard.writeText($("shareLink").value);
-    log(ui.copied || "Copied");
+    const link = $("shareLink").value;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(link);
+            log(ui.copied || "Copied");
+        } else {
+            // Fallback for browsers without clipboard API
+            $("shareLink").select();
+            $("shareLink").setSelectionRange(0, 99999); // For mobile devices
+            document.execCommand('copy');
+            log(ui.copied || "Copied");
+        }
+    } catch (err) {
+        // If all fails, just select the text so user can copy manually
+        $("shareLink").select();
+        log("Please copy manually (Ctrl+C or Cmd+C)");
+    }
 };
 
 $("create").onclick = async () => {
