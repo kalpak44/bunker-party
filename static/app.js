@@ -18,11 +18,61 @@ function getQueryParam(name) {
     return params.get(name);
 }
 
-// Auto-join logic
+// LocalStorage helpers
+function saveSession(name, room, lang) {
+    localStorage.setItem('bunker_name', name);
+    localStorage.setItem('bunker_room', room);
+    localStorage.setItem('bunker_lang', lang);
+}
+
+function getSession() {
+    return {
+        name: localStorage.getItem('bunker_name') || '',
+        room: localStorage.getItem('bunker_room') || '',
+        lang: localStorage.getItem('bunker_lang') || 'en'
+    };
+}
+
+function clearSession() {
+    localStorage.removeItem('bunker_name');
+    localStorage.removeItem('bunker_room');
+    localStorage.removeItem('bunker_lang');
+}
+
+// Auto-join/restore logic
 window.addEventListener('DOMContentLoaded', () => {
     const roomParam = getQueryParam('room');
+    const session = getSession();
+
+    // Restore language preference
+    if (session.lang) {
+        $("lang").value = session.lang;
+    }
+
+    // Restore name if available
+    if (session.name) {
+        $("name").value = session.name;
+    }
+
+    // Auto-reconnect if we have a saved session with both name and room
+    if (session.name && session.room && !roomParam) {
+        // Attempt to reconnect to saved session
+        currentRoomId = session.room;
+        myName = session.name;
+        myLang = session.lang;
+
+        // Try to reconnect in the background
+        setTimeout(() => {
+            joinRoom(session.room);
+        }, 100);
+        return;
+    }
+
+    // If URL has room param, prepare to join that room
     if (roomParam && /^\d{4}$/.test(roomParam)) {
-        $("room").value = roomParam;
+        currentRoomId = roomParam;
+        // Update button text to show we're joining a specific room
+        $("joinOrCreate").textContent = `Join room ${roomParam}`;
     }
 });
 
@@ -76,30 +126,25 @@ $("copyLinkBtn").onclick = async () => {
     }
 };
 
-$("create").onclick = async () => {
+$("joinOrCreate").onclick = async () => {
     clearMainError();
     myName = $("name").value.trim();
     myLang = $("lang").value;
 
     if (!myName) return showMainError("Name is required");
 
+    // If we have a room code from URL, join it
+    if (currentRoomId) {
+        joinRoom(currentRoomId);
+        return;
+    }
+
+    // Otherwise, create a new room
     const res = await fetch(`/create/${myLang}`, { method: "POST" });
     const data = await res.json();
 
-    $("room").value = data.room_id;
+    currentRoomId = data.room_id;
     joinRoom(data.room_id);
-};
-
-$("join").onclick = () => {
-    clearMainError();
-    myName = $("name").value.trim();
-    myLang = $("lang").value;
-    const room = $("room").value.trim();
-
-    if (!myName) return showMainError("Name is required");
-    if (!/^\d{4}$/.test(room)) return showMainError("Room code must be 4 digits");
-
-    joinRoom(room);
 };
 
 function joinRoom(room) {
@@ -108,11 +153,23 @@ function joinRoom(room) {
 
     ws.onopen = () => {
         ws.send(JSON.stringify({ name: myName, lang: myLang }));
+
+        // Save session to localStorage on successful connection
+        saveSession(myName, room, myLang);
+
         $("main").classList.add("hidden");
         $("game").classList.remove("hidden");
     };
 
-    ws.onclose = () => log(ui.disconnected || "Disconnected");
+    ws.onclose = () => {
+        log(ui.disconnected || "Disconnected");
+        // Don't clear session on disconnect - allow reconnection
+    };
+
+    ws.onerror = () => {
+        // Clear session on connection error
+        clearSession();
+    };
 
     ws.onmessage = (e) => {
         const m = JSON.parse(e.data);
@@ -123,6 +180,10 @@ function joinRoom(room) {
             $("game").classList.add("hidden");
             $("main").classList.remove("hidden");
             showMainError(msg);
+
+            // Clear session on error (e.g., room doesn't exist, game started, etc.)
+            clearSession();
+
             try { ws.close(); } catch {}
             return;
         }
@@ -135,10 +196,7 @@ function joinRoom(room) {
             currentRoomId = m.room_id;
 
             $("title").textContent = ui.title;
-            $("create").textContent = ui.create_new_game;
-            $("join").textContent = ui.join;
             $("name").placeholder = ui.your_name;
-            $("room").placeholder = ui.room_code_placeholder;
 
             $("roomCodeLabel").textContent = ui.room_code_label;
             $("copyLinkBtn").textContent = ui.copy;
