@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { $, escapeHtml, log } from './utils.js';
-import { sendRevealCard, sendVoteEliminate, sendSkipInactive } from './websocket.js';
+import { sendRevealCard, sendVoteEliminate } from './websocket.js';
 
 export function renderCards() {
     const root = $("yourCards");
@@ -119,51 +119,3 @@ export function renderPlayers() {
     $("players").textContent = `${state.ui.players}: ${playerList}`;
 }
 
-export function renderSkipButton() {
-    // Only show skip button during phases where actions are required
-    const relevantPhase = state.gameState.phase === "reveal" || state.gameState.phase === "confirm" || state.gameState.phase === "vote";
-    if (!relevantPhase) {
-        $("skipBtn")?.classList.add("hidden");
-        return;
-    }
-
-    // Check if there are offline players blocking progress
-    const onlineStatus = state.gameState.online_status || {};
-    const eliminatedSet = new Set((state.gameState.eliminated_names || []).map(n => n.toLowerCase()));
-    const allPlayers = Object.keys(onlineStatus);
-    const activePlayers = allPlayers.filter(name => !eliminatedSet.has(name.toLowerCase()));
-    const offlinePlayers = activePlayers.filter(name => !onlineStatus[name]);
-
-    // Check if progress is blocked
-    let blocked = false;
-    if (state.gameState.phase === "reveal") {
-        blocked = state.gameState.reveals_done < state.gameState.players_total;
-    } else if (state.gameState.phase === "confirm") {
-        blocked = state.gameState.confirms_done < state.gameState.players_total;
-    } else if (state.gameState.phase === "vote") {
-        blocked = (state.gameState.votes_done || 0) < state.gameState.players_total;
-    }
-
-    // Show skip button if offline players exist and progress is blocked
-    const shouldShow = offlinePlayers.length > 0 && blocked;
-    const skipBtn = $("skipBtn");
-
-    if (!skipBtn && shouldShow) {
-        // Create skip button if it doesn't exist
-        const btn = document.createElement("button");
-        btn.id = "skipBtn";
-        btn.className = "w-full min-h-[44px] bg-amber-600 hover:bg-amber-500 py-2 rounded font-semibold";
-        btn.textContent = `${state.ui.skip_inactive_player || "Skip inactive player"} (${state.gameState.skip_votes || 0}/${state.gameState.players_total})`;
-        btn.onclick = () => {
-            sendSkipInactive();
-        };
-        // Insert after confirm button or in status area
-        const statusArea = $("confirm").parentElement;
-        statusArea.appendChild(btn);
-    } else if (skipBtn) {
-        skipBtn.classList.toggle("hidden", !shouldShow);
-        if (shouldShow) {
-            skipBtn.textContent = `${state.ui.skip_inactive_player || "Skip inactive player"} (${state.gameState.skip_votes || 0}/${state.gameState.players_total})`;
-        }
-    }
-}

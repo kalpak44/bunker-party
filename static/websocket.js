@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { $, log, showMainError, protoWs } from './utils.js';
 import { saveSession, clearSession } from './storage.js';
-import { renderCards, renderRevealed, renderVote, renderPlayers, renderSkipButton } from './rendering.js';
+import { renderCards, renderRevealed, renderVote, renderPlayers } from './rendering.js';
 
 export function joinRoom(room) {
     const wsUrl = `${protoWs()}://${location.host}/ws/${room}`;
@@ -88,7 +88,8 @@ function handleMessage(e) {
     }
 
     if (m.type === "player_reveal") {
-        log(`🔓 ${m.player} — ${state.labels[m.key] || m.key}: ${m.value}`);
+        // Key and value are already localized by the backend
+        log(`🔓 ${m.player} — ${m.key}: ${m.value}`);
     }
 
     if (m.type === "player_reconnected") {
@@ -210,7 +211,6 @@ function handleStateUpdate(m) {
     renderRevealed();
     renderVote();
     renderPlayers();
-    renderSkipButton();
 
     // Show eliminated state for me
     const meOut = (m.eliminated_names || []).some(n => (n || "").toLowerCase() === (state.myNameCanonical || "").toLowerCase());
@@ -241,7 +241,3 @@ export function sendVoteEliminate(target) {
     log(`🗳️ ${state.ui.you_voted || "You voted"}: ${target}`);
 }
 
-export function sendSkipInactive() {
-    state.ws.send(JSON.stringify({ type: "skip_inactive" }));
-    log(`⏭️ ${state.ui.skip_inactive_player || "Voted to skip"}`);
-}

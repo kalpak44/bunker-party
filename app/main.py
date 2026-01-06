@@ -56,11 +56,13 @@ def compute_unique_capacity() -> int:
     return min_unique or 0
 
 
-def make_character_for_room(room: dict, lang: str) -> dict[str, str]:
+def make_character_for_room(room: dict, lang: str) -> tuple[dict[str, str], dict[str, int]]:
     """
     Create a character for a player ensuring no duplicate card values per key within the room.
     Preference is given to the player's selected language list; if it's exhausted for a key,
     fall back to any available value (including duplicates as a last resort).
+
+    Returns: (character dict with localized values, character_indices dict with card indices)
     """
     # Prefer the player's language; if not present (shouldn't happen), use room default
     if lang not in GAME_DATA:
@@ -68,37 +70,34 @@ def make_character_for_room(room: dict, lang: str) -> dict[str, str]:
 
     cards_by_lang = GAME_DATA[lang]["cards"]
 
-    # Collect used values in the room per key (string comparison)
-    used_per_key: dict[str, set] = {k: set() for k in REVEAL_KEYS}
+    # Collect used indices in the room per key
+    used_indices_per_key: dict[str, set] = {k: set() for k in REVEAL_KEYS}
     for p in room.get("players", {}).values():
-        ch = p.get("character", {})
+        ch_indices = p.get("character_indices", {})
         for k in REVEAL_KEYS:
-            v = ch.get(k)
-            if v is not None:
-                used_per_key[k].add(v)
+            idx = ch_indices.get(k)
+            if idx is not None:
+                used_indices_per_key[k].add(idx)
 
     character: dict[str, str] = {}
+    character_indices: dict[str, int] = {}
+
     for k in REVEAL_KEYS:
-        # Start with preferred language pool
+        # Get card list for this key in player's language
         pool = list(cards_by_lang.get(k, []))
-        # Union across all languages for this key
-        union_pool = set(pool)
-        for gd in GAME_DATA.values():
-            union_pool.update(gd["cards"].get(k, []))
 
-        # Filter out already used values for this key
-        available = [v for v in pool if v not in used_per_key[k]]
-        union_available = [v for v in union_pool if v not in used_per_key[k]]
+        # Find available indices (not used yet)
+        available_indices = [i for i in range(len(pool)) if i not in used_indices_per_key[k]]
 
-        if available:
-            character[k] = random.choice(available)
-        elif union_available:
-            character[k] = random.choice(union_available)
+        if available_indices:
+            idx = random.choice(available_indices)
+            character[k] = pool[idx]
+            character_indices[k] = idx
         else:
-            # No unique options left at all for this key in any language — reject creating character
+            # No unique options left
             raise ValueError(f"No unique cards remaining for key '{k}' in room {room.get('room_id')}")
 
-    return character
+    return character, character_indices
 
 
 async def safe_send(ws: WebSocket, msg: dict):
@@ -163,14 +162,24 @@ async def broadcast_state(room: dict):
         elif room["phase"] == PHASE_VOTE:
             player_action_done = pid in room.get("round_votes", {})
 
-        # Localize revealed card labels for this player
+        # Localize revealed cards for this player (both labels and values)
         recipient_lang = p["lang"]
         localized_labels = GAME_DATA[recipient_lang]["labels"]
+        localized_cards = GAME_DATA[recipient_lang]["cards"]
         revealed_localized = {}
-        for player_name, cards in [(pl["name"], pl["revealed"]) for pl in room["players"].values()]:
-            revealed_localized[player_name] = {
-                localized_labels.get(k, k): v for k, v in cards.items()
-            }
+        for pl in room["players"].values():
+            player_name = pl["name"]
+            revealed_indices = pl.get("revealed_indices", {})
+            revealed_localized[player_name] = {}
+            for key, card_idx in revealed_indices.items():
+                localized_key = localized_labels.get(key, key)
+                # Safely get localized value with bounds checking
+                if key in localized_cards and card_idx < len(localized_cards[key]):
+                    localized_value = localized_cards[key][card_idx]
+                else:
+                    # Fallback to original value if index out of bounds
+                    localized_value = pl.get("revealed", {}).get(key, "")
+                revealed_localized[player_name][localized_key] = localized_value
 
         await safe_send(p["ws"], {
             "type": "state",
@@ -184,7 +193,6 @@ async def broadcast_state(room: dict):
             "confirms_done": confirms_done,
             "votes_done": votes_done,
             "vote_quota": current_round_quota(room),
-            "skip_votes": len(room.get("skip_votes", set())),
             # Revote context exposed to clients (names + quota)
             "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
             "revote_quota": int(room.get("revote_quota") or 0),
@@ -224,7 +232,6 @@ async def start_next_round(room: dict):
     room["round_reveals"] = {}
     room["round_confirms"] = set()
     room["round_votes"] = {}
-    room["skip_votes"] = set()
     # clear any revote context from previous round
     room.pop("revote_targets", None)
     room.pop("revote_quota", None)
@@ -409,7 +416,7 @@ async def ws_room(ws: WebSocket, room_id: str):
                 return
 
             try:
-                character = make_character_for_room(room, lang)
+                character, character_indices = make_character_for_room(room, lang)
             except ValueError:
                 await safe_send(ws, {"type": "error", "code": "no_unique_cards", "message": ui.get("error", "Error")})
                 await ws.close(code=1013)
@@ -422,7 +429,9 @@ async def ws_room(ws: WebSocket, room_id: str):
                 "lang": lang,
                 "ws": ws,
                 "character": character,
+                "character_indices": character_indices,
                 "revealed": {},
+                "revealed_indices": {},
                 "used_keys": set(),
                 "online": True,
                 "last_seen": time.time(),
@@ -485,13 +494,16 @@ async def ws_room(ws: WebSocket, room_id: str):
 
                 p["used_keys"].add(key)
                 p["revealed"][key] = p["character"][key]
+                p["revealed_indices"][key] = p["character_indices"][key]
                 room["round_reveals"][pid] = key
 
                 # Send localized reveal message to each player
+                card_idx = p["character_indices"][key]
                 for recipient in list(room["players"].values()):
                     recipient_lang = recipient["lang"]
                     localized_key = GAME_DATA[recipient_lang]["labels"].get(key, key)
-                    localized_value = p["character"][key]  # Value stays the same (it's already in the revealer's language)
+                    # Translate card value using the card index
+                    localized_value = GAME_DATA[recipient_lang]["cards"][key][card_idx]
                     await safe_send(recipient["ws"], {
                         "type": "player_reveal",
                         "player": p["name"],
@@ -625,57 +637,6 @@ async def ws_room(ws: WebSocket, room_id: str):
                         return
                     await start_next_round(room)
 
-            # SKIP INACTIVE PLAYER
-            elif t == "skip_inactive":
-                # eliminated or offline cannot vote to skip
-                if pid in room.get("eliminated", set()) or not room["players"].get(pid, {}).get("online", False):
-                    continue
-
-                # Add skip vote
-                room["skip_votes"].add(pid)
-                await broadcast_state(room)
-
-                # Check if all online active players voted to skip
-                online_active = [p for p in active_pids(room) if room["players"][p].get("online", True)]
-                offline_active = [p for p in active_pids(room) if not room["players"][p].get("online", True)]
-
-                # Only proceed if there are offline players and all online players voted
-                if offline_active and len(room["skip_votes"]) >= len(online_active):
-                    # Clear skip votes for next time
-                    room["skip_votes"] = set()
-
-                    # Auto-complete actions for offline players based on phase
-                    if room["phase"] == PHASE_REVEAL:
-                        # Mark offline players as having revealed (nothing)
-                        for off_pid in offline_active:
-                            if off_pid not in room["round_reveals"]:
-                                room["round_reveals"][off_pid] = None  # placeholder
-
-                        # Check if all active revealed now
-                        if len([x for x in room["round_reveals"].keys() if x in active_pids(room)]) == len(active_pids(room)):
-                            room["phase"] = PHASE_CONFIRM
-                            await broadcast(room, {"type": "phase", "phase": PHASE_CONFIRM})
-
-                    elif room["phase"] == PHASE_CONFIRM:
-                        # Mark offline players as confirmed
-                        for off_pid in offline_active:
-                            room["round_confirms"].add(off_pid)
-
-                        # Check if all confirmed now
-                        if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)):
-                            if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 2:
-                                room["phase"] = PHASE_VOTE
-                                room["round_votes"] = {}
-                                await broadcast(room, {"type": "phase", "phase": PHASE_VOTE})
-                            else:
-                                await start_next_round(room)
-
-                    elif room["phase"] == PHASE_VOTE:
-                        # Can't auto-vote for offline players - skip directly to next round
-                        # This prevents unfair eliminations
-                        await start_next_round(room)
-
-                    await broadcast_state(room)
 
     except WebSocketDisconnect:
         pass
