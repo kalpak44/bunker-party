@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import uuid
 import random
 import re
+import time
 
 from app.rooms import (
     rooms,
@@ -143,6 +144,9 @@ async def broadcast_state(room: dict):
     # players_total is active participants count in current phase
     players_total = len(act_pids)
 
+    # Build online status map
+    online_status = {p["name"]: p.get("online", True) for p in room["players"].values()}
+
     await broadcast(room, {
         "type": "state",
         "phase": room["phase"],
@@ -155,11 +159,13 @@ async def broadcast_state(room: dict):
         "confirms_done": confirms_done,
         "votes_done": votes_done,
         "vote_quota": current_round_quota(room),
+        "skip_votes": len(room.get("skip_votes", set())),
         # Revote context exposed to clients (names + quota)
         "revote_targets": [name_by_pid(room, pid) for pid in (room.get("revote_targets") or [])],
         "revote_quota": int(room.get("revote_quota") or 0),
         "eliminated_names": [name_by_pid(room, pid) for pid in room.get("eliminated", set())],
         "revealed": {p["name"]: p["revealed"] for p in room["players"].values()},
+        "online_status": online_status,
     })
 
 
@@ -192,6 +198,7 @@ async def start_next_round(room: dict):
     room["round_reveals"] = {}
     room["round_confirms"] = set()
     room["round_votes"] = {}
+    room["skip_votes"] = set()
     # clear any revote context from previous round
     room.pop("revote_targets", None)
     room.pop("revote_quota", None)
@@ -301,7 +308,8 @@ async def ws_room(ws: WebSocket, room_id: str):
         return
 
     room = rooms[room_id]
-    pid = uuid.uuid4().hex
+    pid = None
+    is_reconnect = False
 
     try:
         join = await ws.receive_json()
@@ -317,51 +325,86 @@ async def ws_room(ws: WebSocket, room_id: str):
             await ws.close(code=1008)
             return
 
-        # no late join after start
+        # Check for reconnection (game already started)
         if room["phase"] != PHASE_LOBBY:
-            await safe_send(ws, {"type": "error", "code": "game_started", "message": ui["game_started"]})
-            await ws.close(code=1008)
-            return
+            # Allow reconnection if player with same name exists (case-insensitive)
+            name_cf = name.casefold()
+            existing_pid = room.get("pid_by_name", {}).get(name_cf)
 
-        # unique name (case-insensitive)
-        existing = {p["name"].casefold() for p in room["players"].values()}
-        if name.casefold() in existing:
-            await safe_send(ws, {"type": "error", "code": "name_taken", "message": ui["name_taken"]})
-            await ws.close(code=1008)
-            return
+            if existing_pid and existing_pid in room["players"]:
+                # Reconnection allowed
+                pid = existing_pid
+                is_reconnect = True
+                # Update language preference if changed
+                room["players"][pid]["lang"] = lang
+            else:
+                # No matching player found - reject
+                await safe_send(ws, {"type": "error", "code": "game_started", "message": ui["game_started"]})
+                await ws.close(code=1008)
+                return
 
-        # capacity guard: refuse join if players exceed unique cards availability
-        capacity = compute_unique_capacity()
-        if len(room["players"]) >= capacity:
-            message_tpl = ui.get("too_many_players") or ui.get("error", "Error")
-            try:
-                message = message_tpl.format(n=capacity)
-            except Exception:
-                message = message_tpl
-            await safe_send(ws, {
-                "type": "error",
-                "code": "too_many_players",
-                "message": message,
-                "max_players": capacity,
+        # New join in lobby phase
+        if not is_reconnect:
+            # unique name (case-insensitive)
+            existing = {p["name"].casefold() for p in room["players"].values()}
+            if name.casefold() in existing:
+                await safe_send(ws, {"type": "error", "code": "name_taken", "message": ui["name_taken"]})
+                await ws.close(code=1008)
+                return
+
+        # Handle reconnection vs new player
+        if is_reconnect:
+            # Update websocket for reconnecting player
+            room["players"][pid]["ws"] = ws
+            room["players"][pid]["online"] = True
+            room["players"][pid]["last_seen"] = time.time()
+            character = room["players"][pid]["character"]
+
+            # Notify others of reconnection
+            await broadcast(room, {
+                "type": "player_reconnected",
+                "player": name,
             })
-            await ws.close(code=1013)
-            return
+        else:
+            # New player joining
+            # capacity guard: refuse join if players exceed unique cards availability
+            capacity = compute_unique_capacity()
+            if len(room["players"]) >= capacity:
+                message_tpl = ui.get("too_many_players") or ui.get("error", "Error")
+                try:
+                    message = message_tpl.format(n=capacity)
+                except Exception:
+                    message = message_tpl
+                await safe_send(ws, {
+                    "type": "error",
+                    "code": "too_many_players",
+                    "message": message,
+                    "max_players": capacity,
+                })
+                await ws.close(code=1013)
+                return
 
-        try:
-            character = make_character_for_room(room, lang)
-        except ValueError:
-            await safe_send(ws, {"type": "error", "code": "no_unique_cards", "message": ui.get("error", "Error")})
-            await ws.close(code=1013)
-            return
+            try:
+                character = make_character_for_room(room, lang)
+            except ValueError:
+                await safe_send(ws, {"type": "error", "code": "no_unique_cards", "message": ui.get("error", "Error")})
+                await ws.close(code=1013)
+                return
 
-        room["players"][pid] = {
-            "name": name,
-            "lang": lang,
-            "ws": ws,
-            "character": character,
-            "revealed": {},
-            "used_keys": set(),
-        }
+            # Create new player
+            pid = uuid.uuid4().hex
+            room["players"][pid] = {
+                "name": name,
+                "lang": lang,
+                "ws": ws,
+                "character": character,
+                "revealed": {},
+                "used_keys": set(),
+                "online": True,
+                "last_seen": time.time(),
+            }
+            # Track name -> pid mapping for reconnection
+            room["pid_by_name"][name.casefold()] = pid
 
         await safe_send(ws, {
             "type": "init",
@@ -553,21 +596,85 @@ async def ws_room(ws: WebSocket, room_id: str):
                         return
                     await start_next_round(room)
 
+            # SKIP INACTIVE PLAYER
+            elif t == "skip_inactive":
+                # eliminated or offline cannot vote to skip
+                if pid in room.get("eliminated", set()) or not room["players"].get(pid, {}).get("online", False):
+                    continue
+
+                # Add skip vote
+                room["skip_votes"].add(pid)
+                await broadcast_state(room)
+
+                # Check if all online active players voted to skip
+                online_active = [p for p in active_pids(room) if room["players"][p].get("online", True)]
+                offline_active = [p for p in active_pids(room) if not room["players"][p].get("online", True)]
+
+                # Only proceed if there are offline players and all online players voted
+                if offline_active and len(room["skip_votes"]) >= len(online_active):
+                    # Clear skip votes for next time
+                    room["skip_votes"] = set()
+
+                    # Auto-complete actions for offline players based on phase
+                    if room["phase"] == PHASE_REVEAL:
+                        # Mark offline players as having revealed (nothing)
+                        for off_pid in offline_active:
+                            if off_pid not in room["round_reveals"]:
+                                room["round_reveals"][off_pid] = None  # placeholder
+
+                        # Check if all active revealed now
+                        if len([x for x in room["round_reveals"].keys() if x in active_pids(room)]) == len(active_pids(room)):
+                            room["phase"] = PHASE_CONFIRM
+                            await broadcast(room, {"type": "phase", "phase": PHASE_CONFIRM})
+
+                    elif room["phase"] == PHASE_CONFIRM:
+                        # Mark offline players as confirmed
+                        for off_pid in offline_active:
+                            room["round_confirms"].add(off_pid)
+
+                        # Check if all confirmed now
+                        if len([x for x in room["round_confirms"] if x in active_pids(room)]) == len(active_pids(room)):
+                            if room["round"] >= 3 and current_round_quota(room) > 0 and len(active_pids(room)) > 2:
+                                room["phase"] = PHASE_VOTE
+                                room["round_votes"] = {}
+                                await broadcast(room, {"type": "phase", "phase": PHASE_VOTE})
+                            else:
+                                await start_next_round(room)
+
+                    elif room["phase"] == PHASE_VOTE:
+                        # Can't auto-vote for offline players - skip directly to next round
+                        # This prevents unfair eliminations
+                        await start_next_round(room)
+
+                    await broadcast_state(room)
+
     except WebSocketDisconnect:
         pass
     finally:
-        if room_id in rooms:
+        if room_id in rooms and pid:
             room = rooms[room_id]
-            room["players"].pop(pid, None)
-            room["start_votes"].discard(pid)
-            room["round_reveals"].pop(pid, None)
-            room["round_confirms"].discard(pid)
-            room.get("round_votes", {}).pop(pid, None)
-            room.get("eliminated", set()).discard(pid)
 
-            if not room["players"]:
-                rooms.pop(room_id, None)
-            else:
+            # Mark player as offline instead of removing
+            if pid in room["players"]:
+                room["players"][pid]["online"] = False
+                room["players"][pid]["last_seen"] = time.time()
+                room["players"][pid]["ws"] = None
+
+                # Notify others of disconnection
+                player_name = room["players"][pid]["name"]
+                await broadcast(room, {
+                    "type": "player_disconnected",
+                    "player": player_name,
+                })
+
+            # Clean up room if all players are offline for more than 5 minutes
+            all_offline = all(not p.get("online", True) for p in room["players"].values())
+            if all_offline:
+                oldest_seen = min((p.get("last_seen", time.time()) for p in room["players"].values()), default=time.time())
+                if time.time() - oldest_seen > 300:  # 5 minutes
+                    rooms.pop(room_id, None)
+
+            if room_id in rooms:
                 # keep state consistent after leave
                 if room["phase"] == PHASE_LOBBY:
                     room["start_votes"] = {x for x in room["start_votes"] if x in room["players"]}
