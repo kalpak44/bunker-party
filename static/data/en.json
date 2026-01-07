@@ -1,0 +1,488 @@
+{
+  "ui": {
+    "title": "Bunker Party",
+    "your_name": "Your name",
+    "language": "Language",
+    "create_new_game": "Create new game",
+    "join": "Join",
+    "room_code": "Room code",
+    "room_code_placeholder": "Room code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "players": "Players",
+    "round": "Round",
+    "bunker_event": "Bunker event",
+    "log_title": "Game log",
+    "your_cards": "Your cards",
+    "revealed_cards": "Revealed cards",
+    "already_revealed": "Already revealed",
+    "hidden": "Hidden",
+    "ready_to_start": "Ready to start",
+    "waiting_opponents": "Waiting for opponents...",
+    "confirm_round_end": "Confirm round end",
+    "lobby_title": "Lobby",
+    "phase_lobby": "Lobby: vote to start",
+    "phase_reveal": "Reveal: choose one card",
+    "phase_confirm": "Confirm: end the round",
+    "phase_vote": "Vote: choose who leaves",
+    "game_started": "Game already started — cannot join",
+    "invalid_room": "Invalid room code",
+    "invalid_room_format": "Room code must be 4 digits",
+    "name_required": "Name is required",
+    "name_taken": "Name is already taken in this room",
+    "you_voted_start": "You voted to start",
+    "you_voted": "You voted",
+    "you_revealed": "You revealed",
+    "you_confirmed": "You confirmed round end",
+    "waiting_votes": "Waiting for start votes",
+    "waiting_confirms": "Waiting for confirmations",
+    "game_over": "Game over",
+    "all_cards_used": "All cards are revealed. Thanks for playing!",
+    "disconnected": "Disconnected",
+    "error": "Error",
+    "too_many_players": "Too many players for the available cards. Max players: {n}",
+    "min_players_to_start": "Need at least {n} players to start",
+    "vote_hint": "Choose who to eliminate this round.",
+    "you_are_out": "You are out. You can observe but not participate.",
+    "congrats_winner": "Congratulations, {name}! You made it into the bunker.",
+    "congrats_winners_two": "Congratulations, {name1} and {name2}! You both made it into the bunker.",
+    "player_offline": "{name} is offline",
+    "player_reconnected": "{name} reconnected",
+    "player_disconnected": "{name} disconnected",
+    "waiting_for_player": "Waiting for {name}",
+    "room_code_label": "Room code",
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "labels": {
+    "profession": "Profession",
+    "health": "Health",
+    "age": "Age",
+    "gender": "Gender",
+    "hobby": "Hobby / Skill",
+    "phobia": "Phobia",
+    "item": "Item"
+  },
+  "bunkers": [
+    {
+      "id": "bunker_0",
+      "text": "☢ Radiation leak detected in Sector C"
+    },
+    {
+      "id": "bunker_1",
+      "text": "💧 Water tastes like pickles. Nobody knows why"
+    },
+    {
+      "id": "bunker_2",
+      "text": "⚡ Generator only runs during karaoke hour"
+    },
+    {
+      "id": "bunker_3",
+      "text": "🧯 The fire extinguisher is full of glitter"
+    },
+    {
+      "id": "bunker_4",
+      "text": "🐀 Mutant rats demand snacks as tribute"
+    },
+    {
+      "id": "bunker_5",
+      "text": "📡 Radio only catches conspiracy podcasts"
+    },
+    {
+      "id": "bunker_6",
+      "text": "🪤 Someone set traps. Also: the traps are for adults"
+    },
+    {
+      "id": "bunker_7",
+      "text": "🥫 Food is 90% canned pineapple"
+    },
+    {
+      "id": "bunker_8",
+      "text": "🧪 A chemistry set is here. So is an accidental explosion"
+    },
+    {
+      "id": "bunker_9",
+      "text": "🕯 Lights go out exactly at 3:33 AM every night"
+    },
+    {
+      "id": "bunker_10",
+      "text": "🎭 Half the bunker thinks this is a reality show"
+    },
+    {
+      "id": "bunker_11",
+      "text": "🚪 Main door jammed. Secondary door is *mysteriously* sticky"
+    },
+    {
+      "id": "bunker_12",
+      "text": "🦠 Everyone must wear socks. It's \"medical protocol\" now"
+    },
+    {
+      "id": "bunker_13",
+      "text": "🎶 Alarm plays disco nonstop. Volume cannot be reduced"
+    },
+    {
+      "id": "bunker_14",
+      "text": "🧠 The psychologist started speaking only in riddles"
+    },
+    {
+      "id": "bunker_15",
+      "text": "📦 Supply drop arrived: 1 spoon, 5 wigs, and a cactus"
+    },
+    {
+      "id": "bunker_16",
+      "text": "🧊 Freezer works. Only freezes emotions"
+    },
+    {
+      "id": "bunker_17",
+      "text": "🦷 Dentist chair exists. No dentist. Many drills"
+    },
+    {
+      "id": "bunker_18",
+      "text": "🐔 Chickens escaped. They are now \"security\""
+    },
+    {
+      "id": "bunker_19",
+      "text": "🧤 Rubber gloves are the new currency"
+    },
+    {
+      "id": "bunker_20",
+      "text": "🧼 Soap is rationed. Tears are unlimited"
+    },
+    {
+      "id": "bunker_21",
+      "text": "🕵 Someone is sabotaging. Everyone is suspicious of the toaster"
+    },
+    {
+      "id": "bunker_22",
+      "text": "🪓 An axe is missing. The wall now has a hole shaped like an axe"
+    },
+    {
+      "id": "bunker_23",
+      "text": "🧴 Shampoo is gone. Morale is collapsing"
+    },
+    {
+      "id": "bunker_24",
+      "text": "📉 Oxygen is dropping slowly. Panic is rising quickly"
+    },
+    {
+      "id": "bunker_25",
+      "text": "🧻 Toilet paper is sacred. A cult has formed"
+    },
+    {
+      "id": "bunker_26",
+      "text": "🗺 The bunker map is upside down. Always"
+    },
+    {
+      "id": "bunker_27",
+      "text": "🧃 Only drink available: \"mystery juice\""
+    },
+    {
+      "id": "bunker_28",
+      "text": "🪬 A cursed amulet found. Management says it's \"fine\""
+    },
+    {
+      "id": "bunker_29",
+      "text": "🧠 New rule: only one person may be sane at a time"
+    }
+  ],
+  "cards": {
+    "profession": [
+      {
+        "id": "profession_0",
+        "text": "Stripper"
+      },
+      {
+        "id": "profession_1",
+        "text": "Tractor Driver"
+      },
+      {
+        "id": "profession_2",
+        "text": "Astrologer"
+      },
+      {
+        "id": "profession_3",
+        "text": "Circus Clown"
+      },
+      {
+        "id": "profession_4",
+        "text": "TikTok Blogger"
+      },
+      {
+        "id": "profession_5",
+        "text": "OnlyFans Model"
+      },
+      {
+        "id": "profession_6",
+        "text": "UFO Hunter"
+      },
+      {
+        "id": "profession_7",
+        "text": "Wedding DJ"
+      },
+      {
+        "id": "profession_8",
+        "text": "Conspiracy Theorist"
+      },
+      {
+        "id": "profession_9",
+        "text": "Snake Handler"
+      },
+      {
+        "id": "profession_10",
+        "text": "Street Magician"
+      },
+      {
+        "id": "profession_11",
+        "text": "Funeral Makeup Artist"
+      },
+      {
+        "id": "profession_12",
+        "text": "Night Club Bouncer"
+      },
+      {
+        "id": "profession_13",
+        "text": "Reality Show Participant"
+      },
+      {
+        "id": "profession_14",
+        "text": "Debt Collector"
+      },
+      {
+        "id": "profession_15",
+        "text": "Underground Fighter"
+      },
+      {
+        "id": "profession_16",
+        "text": "Pirate Cosplayer (serious)"
+      },
+      {
+        "id": "profession_17",
+        "text": "Professional Line-Cutter"
+      },
+      {
+        "id": "profession_18",
+        "text": "Haunted Doll Repairer"
+      }
+    ],
+    "health": [
+      {
+        "id": "health_0",
+        "text": "Perfectly healthy"
+      },
+      {
+        "id": "health_1",
+        "text": "Asthma"
+      },
+      {
+        "id": "health_2",
+        "text": "One kidney"
+      },
+      {
+        "id": "health_3",
+        "text": "Panic attacks"
+      },
+      {
+        "id": "health_4",
+        "text": "Allergic to seriousness"
+      },
+      {
+        "id": "health_5",
+        "text": "Chronic back pain"
+      },
+      {
+        "id": "health_6",
+        "text": "Sleepwalking"
+      },
+      {
+        "id": "health_7",
+        "text": "Hearing problems"
+      },
+      {
+        "id": "health_8",
+        "text": "Diabetes"
+      },
+      {
+        "id": "health_9",
+        "text": "Recovered cancer patient"
+      }
+    ],
+    "age": [
+      {
+        "id": "age_0",
+        "text": "18"
+      },
+      {
+        "id": "age_1",
+        "text": "21"
+      },
+      {
+        "id": "age_2",
+        "text": "25"
+      },
+      {
+        "id": "age_3",
+        "text": "29"
+      },
+      {
+        "id": "age_4",
+        "text": "33"
+      },
+      {
+        "id": "age_5",
+        "text": "35"
+      },
+      {
+        "id": "age_6",
+        "text": "40"
+      },
+      {
+        "id": "age_7",
+        "text": "50"
+      },
+      {
+        "id": "age_8",
+        "text": "60"
+      },
+      {
+        "id": "age_9",
+        "text": "67"
+      }
+    ],
+    "gender": [
+      {
+        "id": "gender_0",
+        "text": "Male"
+      },
+      {
+        "id": "gender_1",
+        "text": "Female"
+      },
+      {
+        "id": "gender_2",
+        "text": "Non-binary"
+      },
+      {
+        "id": "gender_3",
+        "text": "Genderfluid"
+      },
+      {
+        "id": "gender_4",
+        "text": "Agender"
+      },
+      {
+        "id": "gender_5",
+        "text": "Prefer not to say"
+      }
+    ],
+    "hobby": [
+      {
+        "id": "hobby_0",
+        "text": "Pole dancing"
+      },
+      {
+        "id": "hobby_1",
+        "text": "Fixing engines"
+      },
+      {
+        "id": "hobby_2",
+        "text": "Hypnosis"
+      },
+      {
+        "id": "hobby_3",
+        "text": "First aid"
+      },
+      {
+        "id": "hobby_4",
+        "text": "Lock picking"
+      },
+      {
+        "id": "hobby_5",
+        "text": "Fire eating"
+      },
+      {
+        "id": "hobby_6",
+        "text": "Knife throwing"
+      },
+      {
+        "id": "hobby_7",
+        "text": "Cooking from anything"
+      },
+      {
+        "id": "hobby_8",
+        "text": "Negotiation & persuasion"
+      },
+      {
+        "id": "hobby_9",
+        "text": "Moonshine brewing"
+      }
+    ],
+    "phobia": [
+      {
+        "id": "phobia_0",
+        "text": "Fear of darkness"
+      },
+      {
+        "id": "phobia_1",
+        "text": "Claustrophobia"
+      },
+      {
+        "id": "phobia_2",
+        "text": "Fear of silence"
+      },
+      {
+        "id": "phobia_3",
+        "text": "Fear of doctors"
+      },
+      {
+        "id": "phobia_4",
+        "text": "Fear of children"
+      },
+      {
+        "id": "phobia_5",
+        "text": "Fear of loud noises"
+      },
+      {
+        "id": "phobia_6",
+        "text": "Fear of being touched"
+      }
+    ],
+    "item": [
+      {
+        "id": "item_0",
+        "text": "Crowbar"
+      },
+      {
+        "id": "item_1",
+        "text": "Gas mask"
+      },
+      {
+        "id": "item_2",
+        "text": "First aid kit (small)"
+      },
+      {
+        "id": "item_3",
+        "text": "Duct tape"
+      },
+      {
+        "id": "item_4",
+        "text": "Mysterious USB drive"
+      },
+      {
+        "id": "item_5",
+        "text": "Whip"
+      },
+      {
+        "id": "item_6",
+        "text": "Box of seeds"
+      },
+      {
+        "id": "item_7",
+        "text": "Old radio"
+      },
+      {
+        "id": "item_8",
+        "text": "Multi-tool"
+      }
+    ]
+  }
+}

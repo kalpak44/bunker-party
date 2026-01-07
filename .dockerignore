@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.idea
+.vscode
+*.iml
+*.swp
+*.swo
+
+# Python (old implementation)
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+env
+ENV
+requirements.txt
+app/*.py
+
+# Java build artifacts
+target/
+*.class
+*.jar
+!bunker-party-*.jar
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
