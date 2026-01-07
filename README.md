@@ -39,35 +39,78 @@ The goal: **convince others you deserve a place in the bunker.**
 
 
 ## Tech overview
-- **Backend:** FastAPI + WebSockets
+- **Backend:** Spark Java + WebSockets
 - **Frontend:** Vanilla HTML + Tailwind CSS
 - **Real-time:** WebSocket game state sync
 - **No database:** All rooms live in memory
 - **Zero auth:** Just enter a name and play
 
+## Requirements
+- Java 17 or newer
+- Maven 3.6+ (for building from source)
+- Docker (optional, for containerized deployment)
+
 ## Play locally (without Docker)
-1. Install Python 3.12 or newer.
+
+### Option 1: Run directly from IDE (IntelliJ IDEA / Eclipse)
+1. Install Java 17 or newer
+2. Open the project in your IDE
+3. Run the `Main.java` class (com.bunkerparty.Main)
+4. Open http://localhost:8000 in your browser
+
+### Option 2: Build and run JAR
+1. Install Java 17 or newer and Maven 3.6+
 2. In the project folder:
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate   # Windows: .venv\Scripts\activate
-   pip install -r requirements.txt
-   uvicorn app.main:app --reload
+   mvn clean package
+   java -jar target/bunker-party-1.0.0.jar
    ```
-3. Open http://localhost:8000 in your browser.
+3. Open http://localhost:8000 in your browser
 
 ## Run with Docker
-- Build and run locally:
-  ```bash
-  docker build -t bunker-party:local .
-  docker run --rm -p 8000:8000 bunker-party:local
-  ```
-- Or use the published image:
-  ```bash
-  docker run --rm -p 8000:8000 kalpak44/bunker-party:latest
-  ```
+
+### Using Jib (recommended - no Dockerfile needed)
+Build and push to registry:
+```bash
+mvn compile jib:build
+```
+
+Build to Docker daemon:
+```bash
+mvn compile jib:dockerBuild
+docker run --rm -p 8000:8000 kalpak44/bunker-party:latest
+```
+
+Build to tar file:
+```bash
+mvn compile jib:buildTar
+docker load --input target/jib-image.tar
+docker run --rm -p 8000:8000 kalpak44/bunker-party:latest
+```
+
+### Using traditional Dockerfile
+Build and run locally:
+```bash
+docker build -t bunker-party:local .
+docker run --rm -p 8000:8000 bunker-party:local
+```
+
+Or use the published image:
+```bash
+docker run --rm -p 8000:8000 kalpak44/bunker-party:latest
+```
 
 Open the game at: http://localhost:8000
+
+## Development
+The application automatically detects if it's running from IDE or JAR:
+- **IDE**: Serves static files from `./static` directory
+- **JAR/Container**: Serves static files from classpath (embedded in JAR)
+
+Run directly from IDE or use:
+```bash
+mvn clean compile exec:java -Dexec.mainClass="com.bunkerparty.Main"
+```
 
 ## Notes
 - Room codes are **4 digits** and case-insensitive.

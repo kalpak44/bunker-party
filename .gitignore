@@ -1,5 +1,5 @@
 # =========================
-# Python
+# Python (legacy)
 # =========================
 __pycache__/
 *.py[cod]
@@ -11,6 +11,17 @@ __pycache__/
 venv/
 ENV/
 env/
+
+# =========================
+# Java / Maven
+# =========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+dependency-reduced-pom.xml
 
 # =========================
 # Node / Tailwind
