@@ -3,7 +3,7 @@ name: Build & Publish Docker image (Jib)
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: { }
+  workflow_dispatch: {}
 
 jobs:
   build-and-push:
@@ -31,6 +31,6 @@ jobs:
 
       - name: Build & push image with Jib (latest + git sha)
         run: |
-          mvn -B -DskipTests jib:build \
+          mvn -B -DskipTests clean package jib:build \
             -Djib.to.image=${{ secrets.DOCKERHUB_USERNAME }}/bunker-party \
             -Djib.to.tags=latest,${{ github.sha }}
