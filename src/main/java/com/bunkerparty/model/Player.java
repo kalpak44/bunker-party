@@ -6,6 +6,7 @@ import java.util.*;
 
 public class Player {
     private final String id;
+    private final String token;
     private String name;
     private Session session;
     private Map<String, Integer> characterIndices;
@@ -14,9 +15,10 @@ public class Player {
     private boolean online;
     private long lastSeen;
 
-    public Player(String id, String name, Session session,
+    public Player(String id, String token, String name, Session session,
                   Map<String, Integer> characterIndices) {
         this.id = id;
+        this.token = token;
         this.name = name;
         this.session = session;
         this.characterIndices = new HashMap<>(characterIndices);
@@ -28,6 +30,10 @@ public class Player {
 
     public String getId() {
         return id;
+    }
+
+    public String getToken() {
+        return token;
     }
 
     public String getName() {
@@ -52,6 +58,10 @@ public class Player {
 
     public Map<String, Integer> getCharacterIndices() {
         return new HashMap<>(characterIndices);
+    }
+
+    public void setCharacterIndices(Map<String, Integer> characterIndices) {
+        this.characterIndices = new HashMap<>(characterIndices);
     }
 
     public Map<String, Integer> getRevealedIndices() {

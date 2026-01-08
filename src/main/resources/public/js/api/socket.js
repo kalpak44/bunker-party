@@ -1,5 +1,8 @@
 import { roomOpened, updatePlayersList } from '../../handler/openRoomHandler.js';
-import { showError, updateConnectionStatus } from '../ui/view.js';
+import { showError, updateConnectionStatus, hideLoader, updateUI } from '../ui/view.js';
+import { cleanupSession } from '../app.js';
+import { State } from '../core/state.js';
+import { joinGameCommand } from '../../handler/joinGameCommand.js';
 
 function protoWs() {
     return location.protocol === 'https:' ? 'wss' : 'ws';
@@ -20,21 +23,39 @@ export function connect() {
     socket.onopen = () => {
         console.log('Connected to WebSocket');
         updateConnectionStatus(true);
+
+        // Auto-rejoin if we have saved session
+        const name = State.getName();
+        const room = new URLSearchParams(window.location.search).get('room');
+        if (name && room) {
+            console.log(`Auto-rejoining room ${room} as ${name}`);
+            joinGameCommand(name, room);
+        } else {
+            hideLoader();
+        }
     };
 
     socket.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === 'open_room') {
+            State.setLastGameState(msg);
             roomOpened(msg);
         } else if (msg.type === 'player_joined') {
+            State.setLastGameState(msg);
             if (msg.players) {
                 updatePlayersList(msg.players);
             }
+            updateUI(msg);
+        } else if (msg.type === 'game_update') {
+            State.setLastGameState(msg);
+            if (msg.players) {
+                updatePlayersList(msg.players);
+            }
+            updateUI(msg);
         } else if (msg.type === 'error') {
-            if (msg.code === 'room_not_found') {
-                const url = new URL(window.location.href);
-                url.searchParams.delete('room');
-                window.history.pushState({path: url.toString()}, '', url.toString());
+            hideLoader();
+            if (msg.code === 'room_not_found' || msg.code === 'invalid_token') {
+                cleanupSession();
             }
             showError(msg.code, msg.message);
         } else if (msg.type === 'refresh') {

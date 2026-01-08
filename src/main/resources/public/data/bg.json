@@ -29,6 +29,7 @@
     "invalid_room": "Невалиден код на стая",
     "invalid_room_format": "Кодът трябва да е от 4 цифри",
     "name_required": "Трябва име",
+    "name_too_long": "Името трябва да е до 10 символа",
     "name_taken": "Името вече е заето в тази стая",
     "you_voted_start": "Гласува за старт",
     "you_voted": "Гласува",
@@ -36,6 +37,7 @@
     "you_confirmed": "Потвърди края на рунда",
     "waiting_votes": "Чакаме гласове за старт",
     "waiting_confirms": "Чакаме потвърждения",
+    "choose_card_hint": "Изберете една от вашите карти, за да я разкриете пред всички.",
     "game_over": "Край на играта",
     "all_cards_used": "Всички карти са разкрити. Благодаря!",
     "disconnected": "Връзката прекъсна",
@@ -52,7 +54,12 @@
     "waiting_for_player": "Чакаме {name}",
     "room_code_label": "Код на стая",
     "online": "Онлайн",
-    "offline": "Офлайн"
+    "offline": "Офлайн",
+    "connecting": "Свързване...",
+    "joining": "Влизане в стаята...",
+    "exit": "Изход",
+    "room_not_found": "Стаята не е намерена",
+    "invalid_token": "Сесията е изтекла или е невалидна"
   },
   "labels": {
     "profession": "Професия",

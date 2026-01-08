@@ -13,46 +13,52 @@
     <description>A light, fast browser-based party game</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!-- Java -->
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Dependencies -->
         <spark.version>2.9.4</spark.version>
         <gson.version>2.10.1</gson.version>
+        <guice.version>7.0.0</guice.version>
         <slf4j.version>2.0.9</slf4j.version>
         <logback.version>1.4.14</logback.version>
-        <guice.version>7.0.0</guice.version>
+
+        <!-- Plugins -->
+        <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <jib.plugin.version>3.5.1</jib.plugin.version>
     </properties>
 
     <dependencies>
-        <!-- Spark Java Framework -->
+        <!-- Spark Java: lightweight HTTP server + routing -->
         <dependency>
             <groupId>com.sparkjava</groupId>
             <artifactId>spark-core</artifactId>
             <version>${spark.version}</version>
         </dependency>
 
-        <!-- Google Guice -->
+        <!-- Guice: dependency injection -->
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
         </dependency>
 
-        <!-- Gson for JSON -->
+        <!-- Gson: JSON serialization/deserialization -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>${gson.version}</version>
         </dependency>
 
-        <!-- SLF4J API -->
+        <!-- SLF4J: logging API -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
 
-        <!-- Logback Classic (SLF4J implementation) -->
+        <!-- Logback: SLF4J implementation -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
@@ -61,76 +67,35 @@
     </dependencies>
 
     <build>
+        <!-- Default Maven resource handling is exactly what we want:
+             src/main/resources/** goes into the classpath.
+             That includes src/main/resources/public/** and logback.xml -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
             </resource>
-            <resource>
-                <directory>static</directory>
-                <targetPath>static</targetPath>
-            </resource>
         </resources>
 
         <plugins>
-            <!-- Maven Compiler Plugin -->
+            <!-- Java 17 compilation -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>${maven.compiler.plugin.version}</version>
                 <configuration>
-                    <source>17</source>
-                    <target>17</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
-            <!-- Maven Shade Plugin for creating fat JAR -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.bunkerparty.Main</mainClass>
-                                </transformer>
-                            </transformers>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Jib Plugin for containerization -->
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
-                <version>3.4.0</version>
+                <version>${jib.plugin.version}</version>
                 <configuration>
                     <from>
                         <image>eclipse-temurin:17-jre-alpine</image>
                     </from>
-                    <to>
-                        <image>kalpak44/bunker-party</image>
-                        <tags>
-                            <tag>latest</tag>
-                            <tag>${project.version}</tag>
-                        </tags>
-                    </to>
+
                     <container>
                         <mainClass>com.bunkerparty.Main</mainClass>
                         <ports>
@@ -141,16 +106,9 @@
                         </environment>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                     </container>
-                    <extraDirectories>
-                        <paths>
-                            <path>
-                                <from>static</from>
-                                <into>/app/static</into>
-                            </path>
-                        </paths>
-                    </extraDirectories>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
 </project>

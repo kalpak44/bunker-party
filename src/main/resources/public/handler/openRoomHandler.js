@@ -1,7 +1,24 @@
 import { t } from '../js/core/i18n.js';
+import { State } from '../js/core/state.js';
+import { hideLoader, updateUI } from '../js/ui/view.js';
 
 export function roomOpened(msg) {
     console.log('Received open_room message:', msg);
+
+    if (msg.token) {
+        State.setToken(msg.token);
+    }
+
+    if (msg.player_id) {
+        State.setPlayerId(msg.player_id);
+    }
+
+    if (msg.room_id) {
+        State.setRoom(msg.room_id);
+    }
+
+    hideLoader();
+    updateUI(msg);
     
     const mainScreen = document.getElementById('main');
     const gameScreen = document.getElementById('game');

@@ -25,6 +25,8 @@ public class Room {
     private Map<Integer, Integer> elimPlan;
     private Set<String> revoteTargets;
     private Integer revoteQuota;
+    private final Map<Integer, Map<String, String>> revealedByRound; // round -> {playerId -> cardKey}
+    private final Map<Integer, Integer> eventByRound; // round -> eventIdx
 
     public Room(String roomId) {
         this.roomId = roomId;
@@ -43,6 +45,8 @@ public class Room {
         this.elimPlan = null;
         this.revoteTargets = null;
         this.revoteQuota = null;
+        this.revealedByRound = new HashMap<>();
+        this.eventByRound = new HashMap<>();
     }
 
     public String getRoomId() {
@@ -92,6 +96,17 @@ public class Room {
 
     public void setEventIdx(Integer eventIdx) {
         this.eventIdx = eventIdx;
+        if (eventIdx != null && round > 0) {
+            eventByRound.put(round, eventIdx);
+        }
+    }
+
+    public Map<Integer, Map<String, String>> getRevealedByRound() {
+        return revealedByRound;
+    }
+
+    public Map<Integer, Integer> getEventByRound() {
+        return eventByRound;
     }
 
     public Set<String> getStartVotes() {
@@ -108,6 +123,7 @@ public class Room {
 
     public void addRoundReveal(String playerId, String key) {
         roundReveals.put(playerId, key);
+        revealedByRound.computeIfAbsent(round, k -> new HashMap<>()).put(playerId, key);
     }
 
     public void clearRoundReveals() {
