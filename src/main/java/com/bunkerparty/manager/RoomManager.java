@@ -12,7 +12,10 @@ public class RoomManager {
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
 
     public Room createRoom() {
-        String id = UUID.randomUUID().toString();
+        String id;
+        do {
+            id = String.format("%04d", (int) (Math.random() * 10000));
+        } while (rooms.containsKey(id));
         Room room = new Room(id);
         rooms.put(id, room);
         return room;

@@ -29,6 +29,7 @@
     "invalid_room": "Invalid room code",
     "invalid_room_format": "Room code must be 4 digits",
     "name_required": "Name is required",
+    "name_too_long": "Name must be max 10 characters",
     "name_taken": "Name is already taken in this room",
     "you_voted_start": "You voted to start",
     "you_voted": "You voted",
@@ -36,6 +37,7 @@
     "you_confirmed": "You confirmed round end",
     "waiting_votes": "Waiting for start votes",
     "waiting_confirms": "Waiting for confirmations",
+    "choose_card_hint": "Select one of your cards to reveal it to everyone.",
     "game_over": "Game over",
     "all_cards_used": "All cards are revealed. Thanks for playing!",
     "disconnected": "Disconnected",
@@ -52,7 +54,12 @@
     "waiting_for_player": "Waiting for {name}",
     "room_code_label": "Room code",
     "online": "Online",
-    "offline": "Offline"
+    "offline": "Offline",
+    "connecting": "Connecting...",
+    "joining": "Joining room...",
+    "exit": "Exit Game",
+    "room_not_found": "Room not found",
+    "invalid_token": "Session expired or invalid"
   },
   "labels": {
     "profession": "Profession",

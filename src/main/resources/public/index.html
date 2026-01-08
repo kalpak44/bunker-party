@@ -11,6 +11,14 @@
 <body class="bg-gray-900 text-white min-h-screen p-3 sm:p-6">
 <div class="w-full max-w-6xl mx-auto space-y-4 sm:space-y-6">
 
+    <!-- LOADER -->
+    <div id="loader" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-[100] flex items-center justify-center">
+        <div class="flex flex-col items-center space-y-4">
+            <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p id="loaderText" class="text-blue-400 font-medium animate-pulse">Connecting...</p>
+        </div>
+    </div>
+
     <h1 id="title" class="text-2xl sm:text-3xl font-bold text-center">Bunker Party</h1>
 
     <!-- MAIN -->
@@ -96,7 +104,7 @@
                            class="flex-1 px-2 py-1 text-xs text-black rounded bg-gray-100 font-mono"
                            value=""/>
                     <button id="copyLinkBtn"
-                            class="min-h-[32px] bg-gray-700 px-2 py-1 rounded text-xs whitespace-nowrap">
+                            class="min-h-[32px] bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors px-3 py-1 rounded text-xs whitespace-nowrap">
                         Copy
                     </button>
                 </div>
@@ -104,6 +112,10 @@
                 <div id="qrcode" class="bg-white p-2 rounded mx-auto w-fit"></div>
 
                 <div id="players" class="text-sm text-gray-300"></div>
+
+                <button id="exitBtn"
+                        class="w-full mt-4 min-h-[40px] border border-red-700 text-red-400 hover:bg-red-900/20 py-1.5 rounded text-sm font-medium">
+                </button>
             </div>
 
             <!-- LOG -->

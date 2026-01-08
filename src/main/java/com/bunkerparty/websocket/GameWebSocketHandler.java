@@ -4,8 +4,12 @@ import com.bunkerparty.manager.RoomManager;
 import com.bunkerparty.model.Player;
 import com.bunkerparty.model.Room;
 import com.bunkerparty.websocket.handler.JoinGameHandler;
+import com.bunkerparty.websocket.handler.LeaveGameHandler;
 import com.bunkerparty.websocket.handler.MessageHandler;
 import com.bunkerparty.websocket.handler.NewGameHandler;
+import com.bunkerparty.websocket.handler.ReadyHandler;
+import com.bunkerparty.websocket.handler.DiscardHandler;
+import com.bunkerparty.websocket.handler.ConfirmHandler;
 import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -31,11 +35,19 @@ public class GameWebSocketHandler {
     public GameWebSocketHandler(
             NewGameHandler newGameHandler,
             JoinGameHandler joinGameHandler,
+            LeaveGameHandler leaveGameHandler,
+            ReadyHandler readyHandler,
+            DiscardHandler discardHandler,
+            ConfirmHandler confirmHandler,
             RoomManager roomManager,
             WebSocketJsonSender sender
     ) {
         handlers.put("new_game", newGameHandler);
         handlers.put("join_game", joinGameHandler);
+        handlers.put("leave_game", leaveGameHandler);
+        handlers.put("ready", readyHandler);
+        handlers.put("discard", discardHandler);
+        handlers.put("confirm", confirmHandler);
         this.roomManager = roomManager;
         this.sender = sender;
     }
@@ -67,18 +79,45 @@ public class GameWebSocketHandler {
         JsonArray players = new JsonArray();
         for (Player p : room.getPlayers().values()) {
             JsonObject pObj = new JsonObject();
+            pObj.addProperty("id", p.getId());
             pObj.addProperty("name", p.getName());
             pObj.addProperty("online", p.isOnline());
+            
+            JsonObject revealed = new JsonObject();
+            p.getRevealedIndices().forEach(revealed::addProperty);
+            pObj.add("revealed", revealed);
+            
             players.add(pObj);
         }
 
         JsonObject notify = new JsonObject();
         notify.addProperty("type", "player_joined"); // reusing same type for simplicity in PoC
+        notify.addProperty("phase", room.getPhase());
+        notify.addProperty("round", room.getRound());
+        if (room.getEventIdx() != null) {
+            notify.addProperty("eventIdx", room.getEventIdx());
+        }
+
+        JsonObject history = new JsonObject();
+        room.getRevealedByRound().forEach((r, reveals) -> {
+            JsonObject rObj = new JsonObject();
+            rObj.addProperty("eventIdx", room.getEventByRound().get(r));
+            JsonObject revealsObj = new JsonObject();
+            reveals.forEach(revealsObj::addProperty);
+            rObj.add("reveals", revealsObj);
+            history.add(String.valueOf(r), rObj);
+        });
+        notify.add("history", history);
+
         notify.add("players", players);
 
         for (Player p : room.getPlayers().values()) {
             if (p.getSession() != null && p.getSession().isOpen()) {
-                sender.send(p.getSession(), notify);
+                JsonObject personalNotify = notify.deepCopy();
+                JsonObject myCards = new JsonObject();
+                p.getCharacterIndices().forEach(myCards::addProperty);
+                personalNotify.add("myCards", myCards);
+                sender.send(p.getSession(), personalNotify);
             }
         }
     }
