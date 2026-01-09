@@ -63,9 +63,9 @@ public class ReadyHandler implements MessageHandler {
     private void checkStart(Room room) {
         int playerCount = room.getPlayers().size();
         if (playerCount >= 3 && playerCount <= 6 && room.getStartVotes().size() == playerCount) {
+            room.setRound(1);
             distributeCards(room);
             room.setPhase(Room.PHASE_REVEAL);
-            room.setRound(1);
             room.addLog(new LogEntry("game_started", Map.of()));
             logger.info("Game started in room {}", room.getRoomId());
         }

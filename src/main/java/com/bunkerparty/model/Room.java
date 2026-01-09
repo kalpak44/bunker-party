@@ -98,6 +98,9 @@ public class Room {
         this.eventIdx = eventIdx;
         if (eventIdx != null && round > 0) {
             eventByRound.put(round, eventIdx);
+        } else if (eventIdx != null && round == 0) {
+            // If it's being set at round 0, it's likely for the upcoming round 1
+            eventByRound.put(1, eventIdx);
         }
     }
 
