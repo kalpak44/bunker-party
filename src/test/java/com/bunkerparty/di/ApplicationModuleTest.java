@@ -2,6 +2,9 @@ package com.bunkerparty.di;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.bunkerparty.config.AppConfig;
+import com.bunkerparty.config.CorsConfig;
+import com.bunkerparty.config.StaticFilesConfig;
 import com.bunkerparty.service.GameService;
 import com.bunkerparty.service.RoomManager;
 import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
@@ -20,6 +23,9 @@ class ApplicationModuleTest {
     assertNotNull(injector.getInstance(RoomManager.class));
     assertNotNull(injector.getInstance(GameService.class));
     assertNotNull(injector.getInstance(WebSocketJsonSender.class));
+    assertNotNull(injector.getInstance(AppConfig.class));
+    assertNotNull(injector.getInstance(CorsConfig.class));
+    assertNotNull(injector.getInstance(StaticFilesConfig.class));
   }
 
   @Test
@@ -61,5 +67,35 @@ class ApplicationModuleTest {
     WebSocketJsonSender b = injector.getInstance(WebSocketJsonSender.class);
 
     assertSame(a, b, "WebSocketJsonSender should be a singleton");
+  }
+
+  @Test
+  void appConfig_is_singleton() {
+    Injector injector = Guice.createInjector(new ApplicationModule());
+
+    AppConfig a = injector.getInstance(AppConfig.class);
+    AppConfig b = injector.getInstance(AppConfig.class);
+
+    assertSame(a, b, "AppConfig should be a singleton");
+  }
+
+  @Test
+  void corsConfig_is_singleton() {
+    Injector injector = Guice.createInjector(new ApplicationModule());
+
+    CorsConfig a = injector.getInstance(CorsConfig.class);
+    CorsConfig b = injector.getInstance(CorsConfig.class);
+
+    assertSame(a, b, "CorsConfig should be a singleton");
+  }
+
+  @Test
+  void staticFilesConfig_is_singleton() {
+    Injector injector = Guice.createInjector(new ApplicationModule());
+
+    StaticFilesConfig a = injector.getInstance(StaticFilesConfig.class);
+    StaticFilesConfig b = injector.getInstance(StaticFilesConfig.class);
+
+    assertSame(a, b, "StaticFilesConfig should be a singleton");
   }
 }
