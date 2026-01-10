@@ -1,4 +1,4 @@
-package com.bunkerparty.model;
+package com.bunkerparty.domain;
 
 import org.eclipse.jetty.websocket.api.Session;
 
