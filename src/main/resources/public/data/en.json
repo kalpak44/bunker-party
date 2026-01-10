@@ -25,6 +25,7 @@
     "phase_reveal": "Reveal: choose one card",
     "phase_confirm": "Confirm: end the round",
     "phase_vote": "Vote: choose who leaves",
+    "phase_game_over": "Game Finished",
     "game_started": "Game already started — cannot join",
     "invalid_room": "Invalid room code",
     "invalid_room_format": "Room code must be 4 digits",
