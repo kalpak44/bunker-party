@@ -26,8 +26,8 @@ jobs:
       - name: Run tests
         run: mvn -B test jacoco:report
 
-      - name: SonarCloud Scan
-        run: mvn -B sonar:sonar
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
