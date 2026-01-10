@@ -55,34 +55,4 @@ export function roomOpened(msg) {
         // Update URL without reloading
         window.history.pushState({path: fullUrl}, '', fullUrl);
     }
-
-    if (msg.players) {
-        updatePlayersList(msg.players);
-    }
-}
-
-export function updatePlayersList(players) {
-    const playersContainer = document.getElementById('players');
-    if (playersContainer) {
-        playersContainer.innerHTML = '';
-        players.forEach(p => {
-            const pEl = document.createElement('div');
-            pEl.className = 'flex items-center gap-2 py-1 border-b border-gray-700 last:border-0';
-            pEl.innerHTML = `
-                <div class="w-2 h-2 rounded-full ${p.online ? 'bg-green-500' : 'bg-gray-500'}"></div>
-                <span>${p.name}</span>
-            `;
-            playersContainer.appendChild(pEl);
-        });
-    }
-
-    const minPlayersHint = document.getElementById('minPlayersHint');
-    if (minPlayersHint) {
-        if (players.length < 3) {
-            minPlayersHint.innerText = t('ui.min_players_to_start', {n: 3});
-            minPlayersHint.classList.remove('hidden');
-        } else {
-            minPlayersHint.classList.add('hidden');
-        }
-    }
 }

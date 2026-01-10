@@ -109,6 +109,14 @@ public class GameWebSocketHandler {
         });
         notify.add("history", history);
 
+        JsonObject roundReveals = new JsonObject();
+        room.getRoundReveals().forEach(roundReveals::addProperty);
+        notify.add("roundReveals", roundReveals);
+
+        JsonArray roundConfirms = new JsonArray();
+        room.getRoundConfirms().forEach(roundConfirms::add);
+        notify.add("roundConfirms", roundConfirms);
+
         notify.add("players", players);
 
         for (Player p : room.getPlayers().values()) {

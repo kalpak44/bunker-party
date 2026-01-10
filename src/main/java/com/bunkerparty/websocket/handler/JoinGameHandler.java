@@ -38,11 +38,6 @@ public class JoinGameHandler implements MessageHandler {
             return;
         }
 
-        if (room.getPhase() != null && !room.getPhase().equals(Room.PHASE_LOBBY)) {
-            sender.send(session, error("game_started", "Game already started — cannot join"));
-            return;
-        }
-
         if (name.isEmpty()) {
             sender.send(session, error("name_required", "Name is required"));
             return;
@@ -67,6 +62,10 @@ public class JoinGameHandler implements MessageHandler {
             }
         } else {
             // New join
+            if (room.getPhase() != null && !room.getPhase().equals(Room.PHASE_LOBBY)) {
+                sender.send(session, error("game_started", "Game already started — cannot join"));
+                return;
+            }
             if (room.getPlayers().size() >= 6) {
                 sender.send(session, error("room_full", "Room is full (max 6 players)"));
                 return;
@@ -97,6 +96,14 @@ public class JoinGameHandler implements MessageHandler {
             history.add(String.valueOf(r), rObj);
         });
         res.add("history", history);
+
+        JsonObject roundReveals = new JsonObject();
+        room.getRoundReveals().forEach(roundReveals::addProperty);
+        res.add("roundReveals", roundReveals);
+
+        JsonArray roundConfirms = new JsonArray();
+        room.getRoundConfirms().forEach(roundConfirms::add);
+        res.add("roundConfirms", roundConfirms);
 
         JsonObject myCards = new JsonObject();
         player.getCharacterIndices().forEach(myCards::addProperty);
@@ -131,6 +138,8 @@ public class JoinGameHandler implements MessageHandler {
         }
 
         notify.add("history", history);
+        notify.add("roundReveals", roundReveals);
+        notify.add("roundConfirms", roundConfirms);
 
         for (Player p : room.getPlayers().values()) {
             if (p.getSession() != null && p.getSession().isOpen() && p.getSession() != session) {
