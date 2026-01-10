@@ -1,6 +1,7 @@
 {
   "ui": {
     "title": "Бункер Парти",
+    "welcome": "Добре дошли",
     "your_name": "Твоето име",
     "language": "Език",
     "create_new_game": "Нова игра",

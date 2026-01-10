@@ -22,117 +22,158 @@
     <h1 id="title" class="text-2xl sm:text-3xl font-bold text-center">Bunker Party</h1>
 
     <!-- MAIN -->
-    <div id="main" class="max-w-md mx-auto space-y-3">
-        <div class="space-y-1">
-            <select id="mainLang" class="w-full px-3 py-2 text-black rounded bg-gray-100">
-                <option value="en">English</option>
-                <option value="ru">Русский</option>
-                <option value="bg">Български</option>
-            </select>
+    <div id="main" class="max-w-md mx-auto space-y-4 bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-700">
+        <div class="text-center space-y-2">
+            <h2 id="mainSubtitle" class="text-gray-400 text-sm uppercase tracking-widest font-semibold">Welcome</h2>
         </div>
 
-        <input id="name" class="w-full px-3 py-3 text-black rounded" placeholder="Your name"/>
-
-        <div id="mainError"
-             class="hidden bg-red-900/40 border border-red-700 text-red-200 rounded p-2 text-sm text-center">
-        </div>
-
-        <button id="joinOrCreate" class="w-full min-h-[44px] bg-blue-600 py-2 rounded font-semibold">
-            Join game
-        </button>
-    </div>
-
-    <!-- GAME -->
-    <div id="game" class="hidden space-y-4">
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-            <!-- STATUS -->
-            <div class="bg-gray-800 rounded p-4 space-y-2 order-1 lg:order-2">
-                <div id="round" class="text-lg font-semibold"></div>
-                <div id="bunker" class="bg-gray-900 rounded p-3 text-sm"></div>
-
-                <div id="phase" class="text-sm text-gray-300"></div>
-
-                <button id="startBtn"
-                        class="hidden w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-500 py-2 rounded font-semibold">
-                </button>
-
-                <div id="waiting"
-                     class="hidden text-center text-sm text-gray-300 bg-gray-900 rounded p-2">
-                </div>
-
-                <div id="minPlayersHint"
-                     class="hidden text-center text-sm text-amber-200 bg-amber-900/40 border border-amber-700 rounded p-2">
-                </div>
-
-                <button id="confirm"
-                        class="hidden w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 py-3 px-4 rounded font-semibold text-base">
-                </button>
-
-                <!-- VOTE PANEL -->
-                <div id="votePanel" class="hidden bg-gray-900 rounded p-3 space-y-2">
-                    <div id="voteTitle" class="font-semibold text-sm">Vote to eliminate</div>
-                    <div id="voteHint" class="text-xs text-gray-400"></div>
-                    <div id="voteList" class="flex flex-wrap gap-2"></div>
-                </div>
-
-                <div id="progress" class="text-xs text-gray-400"></div>
-
-                <div id="gameOver"
-                     class="hidden text-center bg-gray-900 rounded p-3 text-sm">
-                </div>
-
-                <div id="youOut" class="hidden text-center bg-red-900/40 border border-red-700 text-red-200 rounded p-2 text-sm"></div>
-            </div>
-
-            <!-- ROOM -->
-            <div class="bg-gray-800 rounded p-4 space-y-2 order-2 lg:order-1">
-                <div id="roomCodeLabel" class="text-sm text-gray-400">Room code</div>
-
-                <div id="roomCode" class="font-mono text-2xl tracking-widest"></div>
-
-                <select id="lang" class="w-full px-2 py-1 text-xs text-black rounded bg-gray-100 mb-2">
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label for="mainLang" class="text-xs text-gray-400 ml-1">Language</label>
+                <select id="mainLang" class="w-full px-4 py-3 text-white rounded-xl bg-gray-900 border border-gray-700 focus:border-blue-500 outline-none transition-all">
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
                     <option value="bg">Български</option>
                 </select>
+            </div>
 
-                <div class="flex items-center gap-2">
-                    <input id="shareLink"
-                           readonly
-                           class="flex-1 px-2 py-1 text-xs text-black rounded bg-gray-100 font-mono"
-                           value=""/>
-                    <button id="copyLinkBtn"
-                            class="min-h-[32px] bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors px-3 py-1 rounded text-xs whitespace-nowrap">
-                        Copy
+            <div class="space-y-1">
+                <label for="name" class="text-xs text-gray-400 ml-1">Your Name</label>
+                <input id="name" class="w-full px-4 py-3 text-white rounded-xl bg-gray-900 border border-gray-700 focus:border-blue-500 outline-none transition-all" placeholder="Your name"/>
+            </div>
+
+            <div id="mainError"
+                 class="hidden bg-red-900/40 border border-red-700 text-red-200 rounded-xl p-3 text-sm text-center">
+            </div>
+
+            <button id="joinOrCreate" class="w-full min-h-[52px] bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition-all rounded-xl font-bold text-lg shadow-lg shadow-blue-900/20">
+                Join game
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game" class="hidden space-y-6">
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: ROOM INFO & PLAYERS -->
+            <div class="lg:col-span-4 space-y-6 order-2 lg:order-1">
+                <!-- ROOM CARD -->
+                <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div id="roomCodeLabel" class="text-xs uppercase tracking-wider text-gray-400 font-bold">Room code</div>
+                        <div class="flex items-center gap-2">
+                             <select id="lang" class="px-2 py-1 text-[10px] text-white rounded bg-gray-900 border border-gray-700 outline-none">
+                                <option value="en">EN</option>
+                                <option value="ru">RU</option>
+                                <option value="bg">BG</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="roomCode" class="text-4xl font-black tracking-[0.2em] text-center py-2 bg-gray-900 rounded-xl border border-gray-700/50 text-blue-400"></div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <input id="shareLink"
+                                   readonly
+                                   class="flex-1 px-3 py-2 text-xs text-gray-300 rounded-lg bg-gray-900 border border-gray-700 font-mono outline-none"
+                                   value=""/>
+                            <button id="copyLinkBtn"
+                                    class="h-9 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-all px-4 rounded-lg text-xs font-bold">
+                                Copy
+                            </button>
+                        </div>
+                        <div id="qrcode" class="bg-white p-3 rounded-xl mx-auto w-fit shadow-inner"></div>
+                    </div>
+
+                    <button id="exitBtn"
+                            class="w-full mt-2 h-10 border border-red-900/50 text-red-500 hover:bg-red-900/20 active:scale-[0.98] transition-all rounded-lg text-xs font-bold uppercase tracking-widest">
                     </button>
                 </div>
 
-                <div id="qrcode" class="bg-white p-2 rounded mx-auto w-fit"></div>
-
-                <div id="players" class="text-sm text-gray-300"></div>
-
-                <button id="exitBtn"
-                        class="w-full mt-4 min-h-[40px] border border-red-700 text-red-400 hover:bg-red-900/20 py-1.5 rounded text-sm font-medium">
-                </button>
+                <!-- PLAYERS CARD -->
+                <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 space-y-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-gray-400">Players</h3>
+                        <span id="playerCount" class="bg-blue-600/20 text-blue-400 text-[10px] px-2 py-0.5 rounded-full font-bold border border-blue-400/20">0</span>
+                    </div>
+                    <div id="players" class="space-y-2"></div>
+                </div>
             </div>
 
-        </div>
+            <!-- RIGHT COLUMN: STATUS & ACTIONS -->
+            <div class="lg:col-span-8 space-y-6 order-1 lg:order-2">
+                <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 min-h-[200px] flex flex-col justify-center">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                             <div id="round" class="text-xl font-black text-blue-400 uppercase tracking-tighter"></div>
+                             <div id="phase" class="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-gray-900 rounded-full text-gray-400 border border-gray-700"></div>
+                        </div>
 
-        <!-- YOUR CARDS -->
-        <div class="bg-gray-800 rounded p-4">
-            <div id="yourCardsTitle" class="font-semibold mb-3">Your cards</div>
-            <div id="yourCards"
-                 class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <div id="bunker" class="bg-gray-900/50 rounded-xl p-4 text-sm border border-gray-700/50 leading-relaxed italic"></div>
+
+                        <div class="pt-2">
+                            <button id="startBtn"
+                                    class="hidden w-full min-h-[56px] bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all rounded-xl font-bold text-lg shadow-lg shadow-indigo-900/20">
+                            </button>
+
+                            <div id="waiting"
+                                 class="hidden text-center text-sm text-gray-400 bg-gray-900/50 rounded-xl p-4 border border-gray-700/30 animate-pulse">
+                            </div>
+
+                            <div id="minPlayersHint"
+                                 class="hidden text-center text-sm text-amber-200 bg-amber-900/40 border border-amber-700/50 rounded-xl p-4">
+                            </div>
+
+                            <button id="confirm"
+                                    class="hidden w-full min-h-[56px] bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all rounded-xl font-bold text-lg shadow-lg shadow-emerald-900/20">
+                            </button>
+                        </div>
+
+                        <!-- VOTE PANEL -->
+                        <div id="votePanel" class="hidden bg-gray-900 rounded-xl p-4 space-y-3 border border-gray-700">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-red-500 animate-ping"></div>
+                                <div id="voteTitle" class="font-bold text-xs uppercase tracking-widest text-red-400">Vote to eliminate</div>
+                            </div>
+                            <div id="voteHint" class="text-xs text-gray-500"></div>
+                            <div id="voteList" class="flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <div id="progress" class="text-[10px] text-gray-500 text-right font-mono uppercase tracking-widest"></div>
+
+                        <div id="gameOver"
+                             class="hidden text-center bg-indigo-900/20 border border-indigo-700/50 rounded-xl p-6 text-sm">
+                        </div>
+
+                        <div id="youOut" class="hidden text-center bg-red-900/40 border border-red-700 text-red-200 rounded-xl p-4 text-sm font-bold"></div>
+                    </div>
+                </div>
+
+                <!-- YOUR CARDS -->
+                <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                        <h3 id="yourCardsTitle" class="font-bold uppercase tracking-widest text-sm text-gray-300">Your cards</h3>
+                    </div>
+                    <div id="yourCards"
+                         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    </div>
+                </div>
             </div>
+
         </div>
 
         <!-- REVEALED -->
-        <div class="bg-gray-800 rounded p-4">
-            <div id="revealedCardsTitle" class="font-semibold mb-3">Revealed cards</div>
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
+             <div class="flex items-center gap-2 mb-4">
+                <div class="w-1.5 h-6 bg-emerald-600 rounded-full"></div>
+                <h3 id="revealedCardsTitle" class="font-bold uppercase tracking-widest text-sm text-gray-300">Revealed cards</h3>
+            </div>
             <div id="revealedBoard"
-                 class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                 class="grid grid-cols-1 md:grid-cols-2 gap-6">
             </div>
         </div>
 

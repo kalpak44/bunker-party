@@ -1,6 +1,7 @@
 {
   "ui": {
     "title": "Bunker Party",
+    "welcome": "Welcome",
     "your_name": "Your name",
     "language": "Language",
     "create_new_game": "Create new game",

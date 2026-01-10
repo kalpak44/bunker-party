@@ -1,6 +1,7 @@
 {
   "ui": {
     "title": "Бункер Пати",
+    "welcome": "Добро пожаловать",
     "your_name": "Ваше имя",
     "language": "Язык",
     "create_new_game": "Новая игра",
