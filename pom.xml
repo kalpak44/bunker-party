@@ -34,6 +34,7 @@
         <maven.enforcer.plugin.version>3.4.1</maven.enforcer.plugin.version>
         <jib.plugin.version>3.5.1</jib.plugin.version>
         <jacoco.plugin.version>0.8.11</jacoco.plugin.version>
+        <fmt.plugin.version>2.29</fmt.plugin.version>
         <sonar.plugin.version>3.10.0.2594</sonar.plugin.version>
         <sonar.projectKey>bunker-party</sonar.projectKey>
         <sonar.organization>kalpak44</sonar.organization>
@@ -144,6 +145,12 @@
                 <configuration>
                     <release>${maven.compiler.release}</release>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.spotify.fmt</groupId>
+                <artifactId>fmt-maven-plugin</artifactId>
+                <version>${fmt.plugin.version}</version>
             </plugin>
 
             <plugin>

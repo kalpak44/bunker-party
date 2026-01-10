@@ -1,37 +1,31 @@
 package com.bunkerparty.routes;
 
+import static spark.Spark.get;
+
 import com.bunkerparty.service.GameService;
 import com.google.gson.Gson;
 import jakarta.inject.Inject;
-
 import java.util.Map;
-
-import static spark.Spark.get;
 
 public class HealthRoutes {
 
-    private final GameService gameService;
-    private final Gson gson = new Gson();
+  private final GameService gameService;
+  private final Gson gson = new Gson();
 
-    /**
-     * Creates new health routes.
-     */
-    @Inject
-    public HealthRoutes(GameService gameService) {
-        this.gameService = gameService;
-    }
+  /** Creates new health routes. */
+  @Inject
+  public HealthRoutes(GameService gameService) {
+    this.gameService = gameService;
+  }
 
-    /**
-     * Registers health check endpoints.
-     */
-    public void register() {
+  /** Registers health check endpoints. */
+  public void register() {
 
-        get("/health", (req, res) -> {
-            res.type("application/json");
-            return gson.toJson(Map.of(
-                    "status", "ok",
-                    "rooms", gameService.getAllRooms().size()
-            ));
+    get(
+        "/health",
+        (req, res) -> {
+          res.type("application/json");
+          return gson.toJson(Map.of("status", "ok", "rooms", gameService.getAllRooms().size()));
         });
-    }
+  }
 }
