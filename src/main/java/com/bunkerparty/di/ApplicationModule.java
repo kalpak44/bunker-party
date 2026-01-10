@@ -9,6 +9,9 @@ import com.google.inject.Scopes;
 
 public class ApplicationModule extends AbstractModule {
 
+    /**
+     * Configures dependency injection bindings.
+     */
     @Override
     protected void configure() {
         bind(RoomManager.class).in(Scopes.SINGLETON);

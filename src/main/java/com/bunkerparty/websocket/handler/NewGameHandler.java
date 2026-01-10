@@ -12,24 +12,20 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
-public class NewGameHandler implements MessageHandler {
-
-    private final GameService gameService;
+public class NewGameHandler extends BaseMessageHandler {
 
     @Inject
     public NewGameHandler(GameService gameService) {
-        this.gameService = gameService;
+        super(gameService);
     }
 
+    /**
+     * Handles the "new_game" message to create a new room.
+     */
     @Override
-    public void handle(Session session, JsonObject msg) throws IOException {
-        String name = msg.has("name") && !msg.get("name").isJsonNull() ? msg.get("name").getAsString().trim() : "";
-        if (name.isEmpty()) {
-            gameService.sendToSession(session, JsonUtils.error("name_required", "Name is required"));
-            return;
-        }
-        if (name.length() > 10) {
-            gameService.sendToSession(session, JsonUtils.error("name_too_long", "Name is too long"));
+    public void handle(Session session, JsonObject msg) {
+        String name = getString(msg, "name").trim();
+        if (!validateName(session, name)) {
             return;
         }
 
@@ -39,12 +35,7 @@ public class NewGameHandler implements MessageHandler {
         Player creator = new Player(playerId, token, name, session, Map.of());
         room.addPlayer(creator);
 
-        JsonObject openRoom = new JsonObject();
-        openRoom.addProperty("type", "open_room");
-        openRoom.addProperty("room_id", room.getRoomId());
-        openRoom.addProperty("player_id", playerId);
-        openRoom.addProperty("token", token);
-        gameService.sendToSession(session, openRoom);
+        sendOpenRoom(session, room, creator);
 
         gameService.broadcastUpdate(room);
     }

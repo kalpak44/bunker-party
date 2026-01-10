@@ -22,6 +22,9 @@ public class GameWebSocketHandler {
     private final Map<String, MessageHandler> handlers = new ConcurrentHashMap<>();
     private final GameService gameService;
 
+    /**
+     * Creates a new WebSocket handler with all necessary message handlers injected.
+     */
     @Inject
     public GameWebSocketHandler(
             NewGameHandler newGameHandler,
@@ -41,11 +44,17 @@ public class GameWebSocketHandler {
         this.gameService = gameService;
     }
 
+    /**
+     * Called when a new WebSocket connection is established.
+     */
     @OnWebSocketConnect
     public void onConnect(Session session) {
         logger.info("Connected: {}", session.getRemoteAddress());
     }
 
+    /**
+     * Called when a WebSocket connection is closed.
+     */
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) throws Exception {
         logger.info("Closed: {}, {}, {}", session.getRemoteAddress(), statusCode, reason);
@@ -64,6 +73,9 @@ public class GameWebSocketHandler {
         }
     }
 
+    /**
+     * Called when a WebSocket message is received.
+     */
     @OnWebSocketMessage
     public void onMessage(Session session, String message) throws Exception {
         var json = JsonParser.parseString(message).getAsJsonObject();

@@ -13,11 +13,17 @@ public class HealthRoutes {
     private final GameService gameService;
     private final Gson gson = new Gson();
 
+    /**
+     * Creates new health routes.
+     */
     @Inject
     public HealthRoutes(GameService gameService) {
         this.gameService = gameService;
     }
 
+    /**
+     * Registers health check endpoints.
+     */
     public void register() {
 
         get("/health", (req, res) -> {

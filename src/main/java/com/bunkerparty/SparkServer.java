@@ -19,12 +19,18 @@ public class SparkServer {
     private final GameWebSocketHandler webSocketHandler;
     private final HealthRoutes healthRoutes;
 
+    /**
+     * Creates a new Spark server with injected dependencies.
+     */
     @Inject
     public SparkServer(GameWebSocketHandler webSocketHandler, HealthRoutes healthRoutes) {
         this.webSocketHandler = webSocketHandler;
         this.healthRoutes = healthRoutes;
     }
 
+    /**
+     * Starts the Spark server.
+     */
     public void start() {
         int port = AppConfig.getPort();
         port(port);
