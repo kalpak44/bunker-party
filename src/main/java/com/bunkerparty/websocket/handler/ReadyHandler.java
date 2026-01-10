@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 
 public class ReadyHandler extends BaseMessageHandler {
 
+    private final Random random;
     private static final Logger logger = LoggerFactory.getLogger(ReadyHandler.class);
     private static final int MIN_PLAYERS = 3;
     private static final int MAX_PLAYERS = 6;
@@ -32,8 +33,9 @@ public class ReadyHandler extends BaseMessageHandler {
     private static final int BUNKER_COUNT = 30;
 
     @Inject
-    public ReadyHandler(GameService gameService) {
+    public ReadyHandler(GameService gameService, Random random) {
         super(gameService);
+        this.random = random;
     }
 
     /**
@@ -67,19 +69,18 @@ public class ReadyHandler extends BaseMessageHandler {
 
     private void distributeCards(Room room) {
         List<Player> players = new ArrayList<>(room.getPlayers().values());
-        Collections.shuffle(players);
+        Collections.shuffle(players, random);
 
         for (Map.Entry<String, Integer> entry : CARD_COUNTS.entrySet()) {
             distributeCategoryCards(players, entry.getKey(), entry.getValue());
         }
 
-        Random rand = new Random();
-        room.setEventIdx(rand.nextInt(BUNKER_COUNT));
+        room.setEventIdx(random.nextInt(BUNKER_COUNT));
     }
 
     private void distributeCategoryCards(List<Player> players, String category, int count) {
         List<Integer> indices = IntStream.range(0, count).boxed().collect(Collectors.toList());
-        Collections.shuffle(indices);
+        Collections.shuffle(indices, random);
 
         for (int i = 0; i < players.size(); i++) {
             Player p = players.get(i);
