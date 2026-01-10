@@ -69,7 +69,7 @@ class GameWebSocketHandlerTest {
   }
 
   @Test
-  void shouldHandleDisconnect() throws Exception {
+  void shouldHandleDisconnect() {
     Session session = mock(Session.class);
     Room room = new Room("1234");
     Player player = new Player("p1", "t1", "Alice", session, Map.of());
