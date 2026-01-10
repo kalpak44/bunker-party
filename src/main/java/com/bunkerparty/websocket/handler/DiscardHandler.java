@@ -1,7 +1,6 @@
 package com.bunkerparty.websocket.handler;
 
 import com.bunkerparty.manager.RoomManager;
-import com.bunkerparty.model.LogEntry;
 import com.bunkerparty.model.Player;
 import com.bunkerparty.model.Room;
 import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
@@ -58,7 +57,6 @@ public class DiscardHandler implements MessageHandler {
 
         player.revealCard(cardKey);
         room.addRoundReveal(playerId, cardKey);
-        room.addLog(new LogEntry("discard", Map.of("name", player.getName(), "card", cardKey)));
 
         if (room.allActivePlayersRevealed()) {
             room.setPhase(Room.PHASE_CONFIRM);

@@ -12,16 +12,15 @@ public class Room {
     private final String roomId;
     private final Map<String, Player> players;
     private final Map<String, String> pidByName;
-    private final List<LogEntry> logs;
 
     private String phase;
     private int round;
     private Integer eventIdx;
-    private Set<String> startVotes;
+    private final Set<String> startVotes;
     private Map<String, String> roundReveals;
-    private Set<String> roundConfirms;
-    private Map<String, String> roundVotes;
-    private Set<String> eliminated;
+    private final Set<String> roundConfirms;
+    private final Map<String, String> roundVotes;
+    private final Set<String> eliminated;
     private Map<Integer, Integer> elimPlan;
     private Set<String> revoteTargets;
     private Integer revoteQuota;
@@ -32,7 +31,6 @@ public class Room {
         this.roomId = roomId;
         this.players = new HashMap<>();
         this.pidByName = new HashMap<>();
-        this.logs = new ArrayList<>();
 
         this.phase = PHASE_LOBBY;
         this.round = 0;
@@ -198,13 +196,6 @@ public class Room {
         this.revoteQuota = null;
     }
 
-    public List<LogEntry> getLogs() {
-        return new ArrayList<>(logs);
-    }
-
-    public void addLog(LogEntry entry) {
-        logs.add(entry);
-    }
 
     public List<String> getActivePlayers() {
         List<String> active = new ArrayList<>();
