@@ -151,6 +151,23 @@ export function updateUI(msg = null) {
                                 <div class="text-center text-sm font-medium text-emerald-400">${t('ui.you_confirmed')}</div>
                             `;
                         }
+                    } else if (phase === 'game_over') {
+                        bunker.innerHTML = `
+                            <div class="text-center py-4">
+                                <div class="text-2xl mb-4">🏆</div>
+                                <div class="text-lg font-bold text-indigo-400 mb-2">${t('ui.game_over')}</div>
+                                <div class="text-sm text-gray-300 mb-6">${t('ui.all_cards_used')}</div>
+                                <button id="newGameBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-lg font-bold transition-all transform hover:scale-[1.02]">
+                                    ${t('ui.create_new_game')}
+                                </button>
+                            </div>
+                        `;
+                        const newGameBtn = document.getElementById('newGameBtn');
+                        if (newGameBtn) {
+                            newGameBtn.onclick = () => {
+                                window.location.href = '/';
+                            };
+                        }
                     } else {
                         // Game started, show something else or clear
                         if (msg.eventIdx !== undefined) {
