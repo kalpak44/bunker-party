@@ -126,6 +126,14 @@ public class GameWebSocketHandler {
     public void onMessage(Session session, String message) throws Exception {
         var json = JsonParser.parseString(message).getAsJsonObject();
         String type = json.get("type").getAsString();
+
+        if ("ping".equals(type)) {
+            JsonObject pong = new JsonObject();
+            pong.addProperty("type", "pong");
+            sender.send(session, pong);
+            return;
+        }
+
         MessageHandler handler = handlers.get(type);
 
         if (handler != null) {

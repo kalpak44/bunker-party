@@ -10,11 +10,19 @@ function protoWs() {
 
 export let socket;
 let reconnectTimer;
+let heartbeatTimer;
+let reconnectDelay = 1000;
+const MAX_RECONNECT_DELAY = 30000;
+const HEARTBEAT_INTERVAL = 30000;
 
 export function connect() {
     if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
+    }
+
+    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        return;
     }
 
     const wsUrl = `${protoWs()}://${location.host}/ws`;
@@ -23,6 +31,8 @@ export function connect() {
     socket.onopen = () => {
         console.log('Connected to WebSocket');
         updateConnectionStatus(true);
+        reconnectDelay = 1000; // Reset delay on successful connection
+        startHeartbeat();
 
         // Auto-rejoin if we have saved session
         const name = State.getName();
@@ -60,12 +70,15 @@ export function connect() {
             showError(msg.code, msg.message);
         } else if (msg.type === 'refresh') {
             console.log('Refresh requested');
+        } else if (msg.type === 'pong') {
+            // Heartbeat received
         }
     };
 
     socket.onclose = () => {
-        console.log('WebSocket connection closed. Retrying in 1 seconds...');
+        console.log(`WebSocket connection closed. Retrying in ${reconnectDelay / 1000} seconds...`);
         updateConnectionStatus(false);
+        stopHeartbeat();
         scheduleReconnect();
     };
 
@@ -79,7 +92,45 @@ function scheduleReconnect() {
     if (!reconnectTimer) {
         reconnectTimer = setTimeout(() => {
             console.log('Attempting to reconnect...');
+            reconnectTimer = null;
             connect();
-        }, 1000);
+            // Increase delay for next attempt
+            reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
+        }, reconnectDelay);
     }
 }
+
+function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({type: 'ping'}));
+        }
+    }, HEARTBEAT_INTERVAL);
+}
+
+function stopHeartbeat() {
+    if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+    }
+}
+
+// Reconnect immediately when page becomes visible or network is back
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        if (!socket || socket.readyState === WebSocket.CLOSED) {
+            console.log('Page visible, attempting immediate reconnect...');
+            reconnectDelay = 1000; // Reset delay
+            connect();
+        }
+    }
+});
+
+window.addEventListener('online', () => {
+    if (!socket || socket.readyState === WebSocket.CLOSED) {
+        console.log('Network online, attempting immediate reconnect...');
+        reconnectDelay = 1000; // Reset delay
+        connect();
+    }
+});
