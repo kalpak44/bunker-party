@@ -1,31 +1,22 @@
 package com.bunkerparty.websocket.handler;
 
-import com.bunkerparty.manager.RoomManager;
-import com.bunkerparty.model.Player;
-import com.bunkerparty.model.Room;
-import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
-import com.google.gson.JsonArray;
+import com.bunkerparty.domain.Player;
+import com.bunkerparty.domain.Room;
+import com.bunkerparty.service.GameService;
 import com.google.gson.JsonObject;
 import jakarta.inject.Inject;
 import org.eclipse.jetty.websocket.api.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 public class DiscardHandler implements MessageHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(DiscardHandler.class);
-    private final RoomManager roomManager;
-    private final WebSocketJsonSender sender;
+    private final GameService gameService;
 
     @Inject
-    public DiscardHandler(RoomManager roomManager, WebSocketJsonSender sender) {
-        this.roomManager = roomManager;
-        this.sender = sender;
+    public DiscardHandler(GameService gameService) {
+        this.gameService = gameService;
     }
 
     @Override
@@ -34,7 +25,7 @@ public class DiscardHandler implements MessageHandler {
         String playerId = msg.has("playerId") ? msg.get("playerId").getAsString() : "";
         String cardKey = msg.has("cardKey") ? msg.get("cardKey").getAsString() : "";
 
-        Room room = roomManager.getRoom(roomId);
+        Room room = gameService.getRoom(roomId);
         if (room == null) return;
 
         Player player = room.getPlayer(playerId);
@@ -62,59 +53,6 @@ public class DiscardHandler implements MessageHandler {
             room.setPhase(Room.PHASE_CONFIRM);
         }
 
-        notifyUpdate(room);
-    }
-
-    private void notifyUpdate(Room room) throws IOException {
-        JsonObject update = new JsonObject();
-        update.addProperty("type", "game_update");
-        update.addProperty("phase", room.getPhase());
-        update.addProperty("round", room.getRound());
-        update.addProperty("roomId", room.getRoomId());
-
-        if (room.getEventIdx() != null) {
-            update.addProperty("eventIdx", room.getEventIdx());
-        }
-
-        JsonObject history = new JsonObject();
-        room.getRevealedByRound().forEach((r, reveals) -> {
-            JsonObject rObj = new JsonObject();
-            rObj.addProperty("eventIdx", room.getEventByRound().get(r));
-            JsonObject revealsObj = new JsonObject();
-            reveals.forEach(revealsObj::addProperty);
-            rObj.add("reveals", revealsObj);
-            history.add(String.valueOf(r), rObj);
-        });
-        update.add("history", history);
-
-        JsonArray playersArray = new JsonArray();
-        for (Player p : room.getPlayers().values()) {
-            JsonObject pObj = new JsonObject();
-            pObj.addProperty("id", p.getId());
-            pObj.addProperty("name", p.getName());
-            pObj.addProperty("online", p.isOnline());
-            pObj.addProperty("ready", room.getStartVotes().contains(p.getId()));
-
-            JsonObject revealed = new JsonObject();
-            p.getRevealedIndices().forEach(revealed::addProperty);
-            pObj.add("revealed", revealed);
-
-            playersArray.add(pObj);
-        }
-        update.add("players", playersArray);
-
-        JsonObject roundReveals = new JsonObject();
-        room.getRoundReveals().forEach(roundReveals::addProperty);
-        update.add("roundReveals", roundReveals);
-
-        for (Player p : room.getPlayers().values()) {
-            if (p.getSession() != null && p.getSession().isOpen()) {
-                JsonObject personalUpdate = update.deepCopy();
-                JsonObject myCards = new JsonObject();
-                p.getCharacterIndices().forEach(myCards::addProperty);
-                personalUpdate.add("myCards", myCards);
-                sender.send(p.getSession(), personalUpdate);
-            }
-        }
+        gameService.broadcastUpdate(room);
     }
 }

@@ -1,6 +1,6 @@
-package com.bunkerparty.manager;
+package com.bunkerparty.service;
 
-import com.bunkerparty.model.Room;
+import com.bunkerparty.domain.Room;
 
 import java.util.Collection;
 import java.util.Map;
