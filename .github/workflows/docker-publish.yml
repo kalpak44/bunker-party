@@ -1,4 +1,4 @@
-name: Build & Publish Docker image (Jib)
+name: Build, Test, SonarCloud, Docker
 
 on:
   push:
@@ -6,25 +6,22 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "${{ properties.java.version }}"
+          java-version: "17"
           cache: maven
-
-      - name: Run tests
-        run: mvn -B test jacoco:report
 
       - name: Build, test, coverage, SonarCloud analysis
         env:
@@ -36,14 +33,13 @@ jobs:
             -Dsonar.projectKey=bunker-party \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push image with Jib (latest + git sha)
+      - name: Build & push image with Jib
         run: |
           mvn -B package jib:build \
             -Djib.to.image=${{ secrets.DOCKERHUB_USERNAME }}/bunker-party \
