@@ -6,6 +6,7 @@ import com.bunkerparty.service.RoomManager;
 import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
+import java.util.Random;
 
 public class ApplicationModule extends AbstractModule {
 
@@ -14,6 +15,7 @@ public class ApplicationModule extends AbstractModule {
      */
     @Override
     protected void configure() {
+        bind(Random.class).toInstance(new Random());
         bind(RoomManager.class).in(Scopes.SINGLETON);
         bind(GameService.class).in(Scopes.SINGLETON);
         bind(WebSocketJsonSender.class).in(Scopes.SINGLETON);
