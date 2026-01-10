@@ -6,7 +6,7 @@ import com.google.inject.Injector;
 
 public class Main {
   /** Entry point of the application. */
-  public static void main(String[] args) {
+  static void main() {
     Injector injector = Guice.createInjector(new ApplicationModule());
     injector.getInstance(SparkServer.class).start();
   }

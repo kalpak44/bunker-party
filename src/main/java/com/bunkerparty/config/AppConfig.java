@@ -1,18 +1,16 @@
 package com.bunkerparty.config;
 
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Singleton
 public class AppConfig {
   private static final int DEFAULT_PORT = 8000;
   private static final Logger logger = LoggerFactory.getLogger(AppConfig.class);
 
-  private AppConfig() {
-    // No instance required
-  }
-
   /** Returns the port number to run the server on, from PORT env var or 8000 by default. */
-  public static int getPort() {
+  public int getPort() {
     String portEnv = System.getenv("PORT");
     if (portEnv != null) {
       try {

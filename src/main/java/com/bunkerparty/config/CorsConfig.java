@@ -3,13 +3,13 @@ package com.bunkerparty.config;
 import static spark.Spark.before;
 import static spark.Spark.options;
 
+import jakarta.inject.Singleton;
+
+@Singleton
 public class CorsConfig {
-  private CorsConfig() {
-    // No instance required
-  }
 
   /** Enables CORS for all routes. */
-  public static void enable() {
+  public void enable() {
     before(
         (req, res) -> {
           res.header("Access-Control-Allow-Origin", "*");

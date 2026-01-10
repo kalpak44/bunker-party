@@ -18,23 +18,34 @@ public class SparkServer {
 
   private final GameWebSocketHandler webSocketHandler;
   private final HealthRoutes healthRoutes;
+  private final AppConfig appConfig;
+  private final CorsConfig corsConfig;
+  private final StaticFilesConfig staticFilesConfig;
 
   /** Creates a new Spark server with injected dependencies. */
   @Inject
-  public SparkServer(GameWebSocketHandler webSocketHandler, HealthRoutes healthRoutes) {
+  public SparkServer(
+      GameWebSocketHandler webSocketHandler,
+      HealthRoutes healthRoutes,
+      AppConfig appConfig,
+      CorsConfig corsConfig,
+      StaticFilesConfig staticFilesConfig) {
     this.webSocketHandler = webSocketHandler;
     this.healthRoutes = healthRoutes;
+    this.appConfig = appConfig;
+    this.corsConfig = corsConfig;
+    this.staticFilesConfig = staticFilesConfig;
   }
 
   /** Starts the Spark server. */
   public void start() {
-    int port = AppConfig.getPort();
+    int port = appConfig.getPort();
     port(port);
 
     webSocket("/ws", webSocketHandler);
 
-    StaticFilesConfig.configure();
-    CorsConfig.enable();
+    staticFilesConfig.configure();
+    corsConfig.enable();
 
     healthRoutes.register();
 
