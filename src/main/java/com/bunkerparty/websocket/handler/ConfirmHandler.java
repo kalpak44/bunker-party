@@ -1,7 +1,6 @@
 package com.bunkerparty.websocket.handler;
 
 import com.bunkerparty.manager.RoomManager;
-import com.bunkerparty.model.LogEntry;
 import com.bunkerparty.model.Player;
 import com.bunkerparty.model.Room;
 import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
@@ -47,12 +46,10 @@ public class ConfirmHandler implements MessageHandler {
         }
 
         room.addRoundConfirm(playerId);
-        room.addLog(new LogEntry("confirm", Map.of("name", player.getName())));
 
         if (room.allActivePlayersConfirmed()) {
             if (room.allPlayersUsedAllCards(TOTAL_CARD_TYPES)) {
                 room.setPhase(Room.PHASE_GAME_OVER);
-                room.addLog(new LogEntry("game_over", Map.of()));
             } else {
                 room.incrementRound();
                 room.clearRoundReveals();
@@ -69,7 +66,6 @@ public class ConfirmHandler implements MessageHandler {
                 room.setEventIdx(newEventIdx);
 
                 room.setPhase(Room.PHASE_REVEAL);
-                room.addLog(new LogEntry("next_round", Map.of("round", room.getRound())));
             }
         }
 

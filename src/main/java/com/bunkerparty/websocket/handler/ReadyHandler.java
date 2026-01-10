@@ -1,7 +1,6 @@
 package com.bunkerparty.websocket.handler;
 
 import com.bunkerparty.manager.RoomManager;
-import com.bunkerparty.model.LogEntry;
 import com.bunkerparty.model.Player;
 import com.bunkerparty.model.Room;
 import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
@@ -52,7 +51,6 @@ public class ReadyHandler implements MessageHandler {
         if (player == null) return;
 
         room.addStartVote(playerId);
-        room.addLog(new LogEntry("ready", Map.of("name", player.getName())));
 
         logger.info("Player {} is ready in room {}", player.getName(), roomId);
 
@@ -66,7 +64,6 @@ public class ReadyHandler implements MessageHandler {
             room.setRound(1);
             distributeCards(room);
             room.setPhase(Room.PHASE_REVEAL);
-            room.addLog(new LogEntry("game_started", Map.of()));
             logger.info("Game started in room {}", room.getRoomId());
         }
     }

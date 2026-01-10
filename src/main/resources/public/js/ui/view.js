@@ -26,9 +26,6 @@ export function updateUI(msg = null) {
         }
     }
 
-    // Update game screen elements
-    const logTitle = document.getElementById('logTitle');
-    if (logTitle) logTitle.innerText = t('ui.log_title');
 
     const roomCodeLabel = document.getElementById('roomCodeLabel');
     if (roomCodeLabel) roomCodeLabel.innerText = t('ui.room_code_label');

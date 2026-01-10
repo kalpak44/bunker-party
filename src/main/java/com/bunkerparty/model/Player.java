@@ -10,8 +10,8 @@ public class Player {
     private String name;
     private Session session;
     private Map<String, Integer> characterIndices;
-    private Map<String, Integer> revealedIndices;
-    private Set<String> usedKeys;
+    private final Map<String, Integer> revealedIndices;
+    private final Set<String> usedKeys;
     private boolean online;
     private long lastSeen;
 
