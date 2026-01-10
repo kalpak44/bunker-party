@@ -24,7 +24,12 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: mvn -B test
+        run: mvn -B test jacoco:report
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
