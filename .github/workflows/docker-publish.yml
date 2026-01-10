@@ -26,10 +26,10 @@ jobs:
       - name: Run tests
         run: mvn -B test jacoco:report
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v7
+      - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=bunker-party
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
