@@ -75,7 +75,7 @@ export function updateUI(msg = null) {
             roundEl.innerText = '';
         }
 
-        if (msg.type === 'game_update' || msg.type === 'open_room') {
+        if (msg.type === 'game_update' || msg.type === 'open_room' || msg.type === 'player_joined') {
             const bunker = document.getElementById('bunker');
             const playersList = document.getElementById('players');
             const playerCountEl = document.getElementById('playerCount');
@@ -119,6 +119,16 @@ export function updateUI(msg = null) {
                     `;
                     playersList.appendChild(pDiv);
                 });
+
+                const minPlayersHint = document.getElementById('minPlayersHint');
+                if (minPlayersHint) {
+                    if (msg.players.length < 3) {
+                        minPlayersHint.innerText = t('ui.min_players_to_start', {n: 3});
+                        minPlayersHint.classList.remove('hidden');
+                    } else {
+                        minPlayersHint.classList.add('hidden');
+                    }
+                }
             }
 
             if (bunker) {

@@ -1,4 +1,4 @@
-import { roomOpened, updatePlayersList } from '../../handler/openRoomHandler.js';
+import { roomOpened } from '../../handler/openRoomHandler.js';
 import { showError, updateConnectionStatus, hideLoader, updateUI } from '../ui/view.js';
 import { cleanupSession } from '../app.js';
 import { State } from '../core/state.js';
@@ -47,21 +47,13 @@ export function connect() {
 
     socket.onmessage = (event) => {
         const msg = JSON.parse(event.data);
-        if (msg.type === 'open_room') {
+        if (msg.type === 'open_room' || msg.type === 'player_joined' || msg.type === 'game_update') {
             State.setLastGameState(msg);
-            roomOpened(msg);
-        } else if (msg.type === 'player_joined') {
-            State.setLastGameState(msg);
-            if (msg.players) {
-                updatePlayersList(msg.players);
+            if (msg.type === 'open_room') {
+                roomOpened(msg);
+            } else {
+                updateUI(msg);
             }
-            updateUI(msg);
-        } else if (msg.type === 'game_update') {
-            State.setLastGameState(msg);
-            if (msg.players) {
-                updatePlayersList(msg.players);
-            }
-            updateUI(msg);
         } else if (msg.type === 'error') {
             hideLoader();
             if (msg.code === 'room_not_found' || msg.code === 'invalid_token') {
