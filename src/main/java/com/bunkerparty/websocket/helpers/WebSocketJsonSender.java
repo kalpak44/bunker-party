@@ -12,6 +12,9 @@ public class WebSocketJsonSender {
     private static final Gson GSON =
             new GsonBuilder().setPrettyPrinting().create();
 
+    /**
+     * Sends a JsonObject to a WebSocket session.
+     */
     public void send(Session session, JsonObject json) throws IOException {
         if (!isOpen(session)) {
             return;
