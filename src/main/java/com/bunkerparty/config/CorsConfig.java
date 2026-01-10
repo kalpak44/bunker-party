@@ -5,6 +5,9 @@ import static spark.Spark.options;
 
 public class CorsConfig {
 
+    /**
+     * Enables CORS for all routes.
+     */
     public static void enable() {
         before((req, res) -> {
             res.header("Access-Control-Allow-Origin", "*");

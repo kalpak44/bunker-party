@@ -1,11 +1,9 @@
 package com.bunkerparty.websocket.handler;
 
-import com.bunkerparty.manager.RoomManager;
-import com.bunkerparty.model.Player;
-import com.bunkerparty.model.Room;
-import com.bunkerparty.websocket.helpers.WebSocketJsonSender;
+import com.bunkerparty.domain.Player;
+import com.bunkerparty.domain.Room;
+import com.bunkerparty.service.GameService;
 import com.bunkerparty.websocket.helpers.JsonUtils;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import jakarta.inject.Inject;
 import org.eclipse.jetty.websocket.api.Session;
@@ -14,51 +12,31 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
-public class NewGameHandler implements MessageHandler {
-
-    private final RoomManager roomManager;
-    private final WebSocketJsonSender sender;
+public class NewGameHandler extends BaseMessageHandler {
 
     @Inject
-    public NewGameHandler(RoomManager roomManager, WebSocketJsonSender sender) {
-        this.roomManager = roomManager;
-        this.sender = sender;
+    public NewGameHandler(GameService gameService) {
+        super(gameService);
     }
 
+    /**
+     * Handles the "new_game" message to create a new room.
+     */
     @Override
-    public void handle(Session session, JsonObject msg) throws IOException {
-        String name = msg.has("name") && !msg.get("name").isJsonNull() ? msg.get("name").getAsString().trim() : "";
-        if (name.isEmpty()) {
-            sender.send(session, JsonUtils.error("name_required", "Name is required"));
-            return;
-        }
-        if (name.length() > 10) {
-            sender.send(session, JsonUtils.error("name_too_long", "Name is too long"));
+    public void handle(Session session, JsonObject msg) {
+        String name = getString(msg, "name").trim();
+        if (!validateName(session, name)) {
             return;
         }
 
-        Room room = roomManager.createRoom();
-
+        Room room = gameService.createRoom();
+        String playerId = UUID.randomUUID().toString();
         String token = UUID.randomUUID().toString();
-        Player creator = new Player(UUID.randomUUID().toString(), token, name, session, Map.of());
+        Player creator = new Player(playerId, token, name, session, Map.of());
         room.addPlayer(creator);
 
-        JsonObject res = new JsonObject();
-        res.addProperty("type", "open_room");
-        res.addProperty("room_id", room.getRoomId());
-        res.addProperty("player_id", creator.getId());
-        res.addProperty("token", token);
-        res.addProperty("phase", room.getPhase());
-        res.addProperty("round", room.getRound());
+        sendOpenRoom(session, room, creator);
 
-        JsonArray players = new JsonArray();
-        JsonObject pObj = new JsonObject();
-        pObj.addProperty("id", creator.getId());
-        pObj.addProperty("name", creator.getName());
-        pObj.addProperty("online", creator.isOnline());
-        players.add(pObj);
-        res.add("players", players);
-
-        sender.send(session, res);
+        gameService.broadcastUpdate(room);
     }
 }
