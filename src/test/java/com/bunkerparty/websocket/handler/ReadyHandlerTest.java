@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -21,7 +22,7 @@ class ReadyHandlerTest {
     @BeforeEach
     void setUp() {
         gameService = mock(GameService.class);
-        handler = new ReadyHandler(gameService);
+        handler = new ReadyHandler(gameService, new Random());
     }
 
     @Test
