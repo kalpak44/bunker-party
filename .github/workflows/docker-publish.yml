@@ -27,7 +27,7 @@ jobs:
         run: mvn -B test jacoco:report
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        run: mvn -B sonar:sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
