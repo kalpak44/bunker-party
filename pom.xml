@@ -36,6 +36,7 @@
         <jacoco.plugin.version>0.8.11</jacoco.plugin.version>
         <sonar.plugin.version>3.10.0.2594</sonar.plugin.version>
         <sonar.projectKey>bunker_party</sonar.projectKey>
+        <sonar.organization>kalpak44</sonar.organization>
     </properties>
 
     <dependencies>
