@@ -31,7 +31,7 @@ class ConfirmHandlerTest {
     room.setRound(1);
     Player p1 = new Player("p1", "t1", "Alice", null, Map.of("p", 1, "h", 2));
     room.addPlayer(p1);
-    p1.revealCard("p"); // Player has more cards to reveal
+    p1.revealCard("p");
     when(gameService.getRoom("1234")).thenReturn(room);
 
     JsonObject msg = new JsonObject();
@@ -53,20 +53,13 @@ class ConfirmHandlerTest {
     room.setRound(1);
     Player p1 = new Player("p1", "t1", "Alice", null, Map.of("p", 1));
     room.addPlayer(p1);
-    p1.revealCard("p"); // All cards (1) revealed
+    p1.revealCard("p");
     when(gameService.getRoom("1234")).thenReturn(room);
 
     JsonObject msg = new JsonObject();
     msg.addProperty("roomId", "1234");
     msg.addProperty("playerId", "p1");
 
-    // TOTAL_CARD_TYPES in ConfirmHandler is 7, but for this test we can see how
-    // allPlayersUsedAllCards behaves
-    // Actually, ConfirmHandler has private static final int TOTAL_CARD_TYPES = 7;
-    // To trigger game over, player must have used 7 cards or we can adjust expectation.
-    // Let's mock player to return true for hasRevealedAllCards(7)
-
-    // Wait, p1 is a real object. Let's give it 7 cards.
     Map<String, Integer> cards =
         Map.of(
             "profession",

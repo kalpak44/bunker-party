@@ -5,6 +5,10 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 public class Main {
+  private Main() {
+    // No requirement for initialization.
+  }
+
   /** Entry point of the application. */
   public static void main() {
     Injector injector = Guice.createInjector(new ApplicationModule());
