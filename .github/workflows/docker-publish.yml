@@ -2,7 +2,7 @@ name: Build & Publish Docker image (Jib)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "cleanup" ]
   workflow_dispatch: {}
 
 jobs:
