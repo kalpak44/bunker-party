@@ -23,6 +23,9 @@ jobs:
           java-version: "17"
           cache: maven
 
+      - name: Run tests
+        run: mvn -B test
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -31,6 +34,6 @@ jobs:
 
       - name: Build & push image with Jib (latest + git sha)
         run: |
-          mvn -B -DskipTests clean package jib:build \
+          mvn -B package jib:build \
             -Djib.to.image=${{ secrets.DOCKERHUB_USERNAME }}/bunker-party \
             -Djib.to.tags=latest,${{ github.sha }}

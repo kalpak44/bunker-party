@@ -11,58 +11,64 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
-public class ConfirmHandler implements MessageHandler {
+public class ConfirmHandler extends BaseMessageHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfirmHandler.class);
-    private final GameService gameService;
     private static final int BUNKER_COUNT = 30;
     private static final int TOTAL_CARD_TYPES = 7;
+    private static final int MAX_EVENT_ATTEMPTS = 100;
 
     @Inject
     public ConfirmHandler(GameService gameService) {
-        this.gameService = gameService;
+        super(gameService);
     }
 
+    /**
+     * Handles the "confirm" message to confirm the end of a round.
+     */
     @Override
-    public void handle(Session session, JsonObject msg) throws Exception {
-        String roomId = msg.has("roomId") ? msg.get("roomId").getAsString() : "";
-        String playerId = msg.has("playerId") ? msg.get("playerId").getAsString() : "";
-
-        Room room = gameService.getRoom(roomId);
+    public void handle(Session session, JsonObject msg) {
+        Room room = getRoom(msg);
         if (room == null) return;
 
-        Player player = room.getPlayer(playerId);
+        Player player = getPlayer(room, msg);
         if (player == null) return;
 
         if (!Room.PHASE_CONFIRM.equals(room.getPhase())) {
-            logger.warn("Confirm attempt in wrong phase: {} for room {}", room.getPhase(), roomId);
+            logger.warn("Confirm attempt in wrong phase: {} for room {}", room.getPhase(), room.getRoomId());
             return;
         }
 
-        room.addRoundConfirm(playerId);
+        room.addRoundConfirm(player.getId());
 
         if (room.allActivePlayersConfirmed()) {
-            if (room.allPlayersUsedAllCards(TOTAL_CARD_TYPES)) {
-                room.setPhase(Room.PHASE_GAME_OVER);
-            } else {
-                room.incrementRound();
-                room.clearRoundReveals();
-                room.clearRoundConfirms();
-
-                Random rand = new Random();
-                int newEventIdx;
-                int attempts = 0;
-                do {
-                    newEventIdx = rand.nextInt(BUNKER_COUNT);
-                    attempts++;
-                } while (room.getEventByRound().containsValue(newEventIdx) && attempts < 100);
-
-                room.setEventIdx(newEventIdx);
-
-                room.setPhase(Room.PHASE_REVEAL);
-            }
+            handleRoundTransition(room);
         }
 
         gameService.broadcastUpdate(room);
+    }
+
+    private void handleRoundTransition(Room room) {
+        if (room.allPlayersUsedAllCards(TOTAL_CARD_TYPES)) {
+            room.setPhase(Room.PHASE_GAME_OVER);
+        } else {
+            room.incrementRound();
+            room.clearRoundReveals();
+            room.clearRoundConfirms();
+
+            room.setEventIdx(pickUniqueEventIndex(room));
+            room.setPhase(Room.PHASE_REVEAL);
+        }
+    }
+
+    private int pickUniqueEventIndex(Room room) {
+        Random rand = new Random();
+        int newEventIdx;
+        int attempts = 0;
+        do {
+            newEventIdx = rand.nextInt(BUNKER_COUNT);
+            attempts++;
+        } while (room.getEventByRound().containsValue(newEventIdx) && attempts < MAX_EVENT_ATTEMPTS);
+        return newEventIdx;
     }
 }

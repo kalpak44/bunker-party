@@ -21,24 +21,39 @@ public class GameService {
     private final RoomManager roomManager;
     private final WebSocketJsonSender sender;
 
+    /**
+     * Creates a new game service.
+     */
     @Inject
     public GameService(RoomManager roomManager, WebSocketJsonSender sender) {
         this.roomManager = roomManager;
         this.sender = sender;
     }
 
+    /**
+     * Creates a new game room.
+     */
     public Room createRoom() {
         return roomManager.createRoom();
     }
 
+    /**
+     * Returns a room by its ID.
+     */
     public Room getRoom(String roomId) {
         return roomManager.getRoom(roomId);
     }
 
+    /**
+     * Returns all active rooms.
+     */
     public Collection<Room> getAllRooms() {
         return roomManager.getAllRooms();
     }
 
+    /**
+     * Broadcasts a game state update to all players in the room.
+     */
     public void broadcastUpdate(Room room) {
         JsonObject update = createGameUpdateMessage(room);
 
@@ -57,6 +72,9 @@ public class GameService {
         }
     }
 
+    /**
+     * Sends a JSON message to a specific WebSocket session.
+     */
     public void sendToSession(Session session, JsonObject message) {
         try {
             sender.send(session, message);
@@ -76,6 +94,16 @@ public class GameService {
             update.addProperty("eventIdx", room.getEventIdx());
         }
 
+        update.add("history", createHistoryObject(room));
+        update.add("startVotes", createStartVotesArray(room));
+        update.add("players", createPlayersArray(room));
+        update.add("roundReveals", createRoundRevealsObject(room));
+        update.add("roundConfirms", createRoundConfirmsArray(room));
+
+        return update;
+    }
+
+    private JsonObject createHistoryObject(Room room) {
         JsonObject history = new JsonObject();
         room.getRevealedByRound().forEach((r, reveals) -> {
             JsonObject rObj = new JsonObject();
@@ -85,12 +113,16 @@ public class GameService {
             rObj.add("reveals", revealsObj);
             history.add(String.valueOf(r), rObj);
         });
-        update.add("history", history);
+        return history;
+    }
 
+    private JsonArray createStartVotesArray(Room room) {
         JsonArray startVotes = new JsonArray();
         room.getStartVotes().forEach(startVotes::add);
-        update.add("startVotes", startVotes);
+        return startVotes;
+    }
 
+    private JsonArray createPlayersArray(Room room) {
         JsonArray playersArray = new JsonArray();
         for (Player p : room.getPlayers().values()) {
             JsonObject pObj = new JsonObject();
@@ -105,16 +137,18 @@ public class GameService {
 
             playersArray.add(pObj);
         }
-        update.add("players", playersArray);
+        return playersArray;
+    }
 
+    private JsonObject createRoundRevealsObject(Room room) {
         JsonObject roundReveals = new JsonObject();
         room.getRoundReveals().forEach(roundReveals::addProperty);
-        update.add("roundReveals", roundReveals);
+        return roundReveals;
+    }
 
+    private JsonArray createRoundConfirmsArray(Room room) {
         JsonArray roundConfirms = new JsonArray();
         room.getRoundConfirms().forEach(roundConfirms::add);
-        update.add("roundConfirms", roundConfirms);
-
-        return update;
+        return roundConfirms;
     }
 }

@@ -13,10 +13,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class ReadyHandler implements MessageHandler {
+public class ReadyHandler extends BaseMessageHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ReadyHandler.class);
-    private final GameService gameService;
+    private static final int MIN_PLAYERS = 3;
+    private static final int MAX_PLAYERS = 6;
+    private static final int INITIAL_ROUND = 1;
 
     private static final Map<String, Integer> CARD_COUNTS = Map.of(
             "profession", 19,
@@ -31,23 +33,23 @@ public class ReadyHandler implements MessageHandler {
 
     @Inject
     public ReadyHandler(GameService gameService) {
-        this.gameService = gameService;
+        super(gameService);
     }
 
+    /**
+     * Handles the "ready" message to vote to start the game.
+     */
     @Override
-    public void handle(Session session, JsonObject msg) throws Exception {
-        String roomId = msg.has("roomId") ? msg.get("roomId").getAsString() : "";
-        String playerId = msg.has("playerId") ? msg.get("playerId").getAsString() : "";
-
-        Room room = gameService.getRoom(roomId);
+    public void handle(Session session, JsonObject msg) {
+        Room room = getRoom(msg);
         if (room == null) return;
 
-        Player player = room.getPlayer(playerId);
+        Player player = getPlayer(room, msg);
         if (player == null) return;
 
-        room.addStartVote(playerId);
+        room.addStartVote(player.getId());
 
-        logger.info("Player {} is ready in room {}", player.getName(), roomId);
+        logger.info("Player {} is ready in room {}", player.getName(), room.getRoomId());
 
         checkStart(room);
         gameService.broadcastUpdate(room);
@@ -55,8 +57,8 @@ public class ReadyHandler implements MessageHandler {
 
     private void checkStart(Room room) {
         int playerCount = room.getPlayers().size();
-        if (playerCount >= 3 && playerCount <= 6 && room.getStartVotes().size() == playerCount) {
-            room.setRound(1);
+        if (playerCount >= MIN_PLAYERS && playerCount <= MAX_PLAYERS && room.getStartVotes().size() == playerCount) {
+            room.setRound(INITIAL_ROUND);
             distributeCards(room);
             room.setPhase(Room.PHASE_REVEAL);
             logger.info("Game started in room {}", room.getRoomId());
@@ -68,20 +70,22 @@ public class ReadyHandler implements MessageHandler {
         Collections.shuffle(players);
 
         for (Map.Entry<String, Integer> entry : CARD_COUNTS.entrySet()) {
-            String category = entry.getKey();
-            int count = entry.getValue();
-            List<Integer> indices = IntStream.range(0, count).boxed().collect(Collectors.toList());
-            Collections.shuffle(indices);
-
-            for (int i = 0; i < players.size(); i++) {
-                Player p = players.get(i);
-                Map<String, Integer> pCards = p.getCharacterIndices();
-                pCards.put(category, indices.get(i));
-                p.setCharacterIndices(pCards);
-            }
+            distributeCategoryCards(players, entry.getKey(), entry.getValue());
         }
 
         Random rand = new Random();
         room.setEventIdx(rand.nextInt(BUNKER_COUNT));
+    }
+
+    private void distributeCategoryCards(List<Player> players, String category, int count) {
+        List<Integer> indices = IntStream.range(0, count).boxed().collect(Collectors.toList());
+        Collections.shuffle(indices);
+
+        for (int i = 0; i < players.size(); i++) {
+            Player p = players.get(i);
+            Map<String, Integer> pCards = p.getCharacterIndices();
+            pCards.put(category, indices.get(i));
+            p.setCharacterIndices(pCards);
+        }
     }
 }

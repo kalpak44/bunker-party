@@ -12,6 +12,9 @@ public final class StaticFilesConfig {
     private StaticFilesConfig() {
     }
 
+    /**
+     * Configures Spark to serve static files from the /public classpath directory.
+     */
     public static void configure() {
         staticFiles.location("/public");
         logger.info("Serving static files from classpath: /public");

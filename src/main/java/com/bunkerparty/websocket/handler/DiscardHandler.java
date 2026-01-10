@@ -9,45 +9,45 @@ import org.eclipse.jetty.websocket.api.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DiscardHandler implements MessageHandler {
+public class DiscardHandler extends BaseMessageHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(DiscardHandler.class);
-    private final GameService gameService;
 
     @Inject
     public DiscardHandler(GameService gameService) {
-        this.gameService = gameService;
+        super(gameService);
     }
 
+    /**
+     * Handles the "discard" message to reveal a card.
+     */
     @Override
-    public void handle(Session session, JsonObject msg) throws Exception {
-        String roomId = msg.has("roomId") ? msg.get("roomId").getAsString() : "";
-        String playerId = msg.has("playerId") ? msg.get("playerId").getAsString() : "";
-        String cardKey = msg.has("cardKey") ? msg.get("cardKey").getAsString() : "";
+    public void handle(Session session, JsonObject msg) {
+        String cardKey = getString(msg, "cardKey");
 
-        Room room = gameService.getRoom(roomId);
+        Room room = getRoom(msg);
         if (room == null) return;
 
-        Player player = room.getPlayer(playerId);
+        Player player = getPlayer(room, msg);
         if (player == null) return;
 
         if (!Room.PHASE_REVEAL.equals(room.getPhase())) {
-            logger.warn("Discard attempt in wrong phase: {} for room {}", room.getPhase(), roomId);
+            logger.warn("Discard attempt in wrong phase: {} for room {}", room.getPhase(), room.getRoomId());
             return;
         }
 
         if (player.hasUsedKey(cardKey)) {
-            logger.warn("Player {} already used card {} in room {}", player.getName(), cardKey, roomId);
+            logger.warn("Player {} already used card {} in room {}", player.getName(), cardKey, room.getRoomId());
             return;
         }
 
-        if (room.getRoundReveals().containsKey(playerId)) {
-            logger.warn("Player {} already discarded a card this round in room {}", player.getName(), roomId);
+        if (room.getRoundReveals().containsKey(player.getId())) {
+            logger.warn("Player {} already discarded a card this round in room {}", player.getName(), room.getRoomId());
             return;
         }
 
         player.revealCard(cardKey);
-        room.addRoundReveal(playerId, cardKey);
+        room.addRoundReveal(player.getId(), cardKey);
 
         if (room.allActivePlayersRevealed()) {
             room.setPhase(Room.PHASE_CONFIRM);
