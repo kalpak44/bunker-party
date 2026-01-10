@@ -1,18 +1,25 @@
 package com.bunkerparty.service;
 
 import com.bunkerparty.domain.Room;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class RoomManagerTest {
 
+    private RoomManager roomManager;
+
+    @BeforeEach
+    void setUp() {
+        roomManager = new RoomManager(new Random());
+    }
+
     @Test
     void shouldCreateRoomWith4DigitId() {
-        RoomManager roomManager = new RoomManager();
-
         Room room = roomManager.createRoom();
 
         assertNotNull(room);
@@ -22,7 +29,6 @@ class RoomManagerTest {
 
     @Test
     void shouldGetRoomById() {
-        RoomManager roomManager = new RoomManager();
         Room createdRoom = roomManager.createRoom();
 
         Room retrievedRoom = roomManager.getRoom(createdRoom.getRoomId());
@@ -32,7 +38,6 @@ class RoomManagerTest {
 
     @Test
     void shouldGetAllRooms() {
-        RoomManager roomManager = new RoomManager();
         roomManager.createRoom();
         roomManager.createRoom();
 

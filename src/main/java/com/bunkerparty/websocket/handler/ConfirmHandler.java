@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Random;
 
 public class ConfirmHandler extends BaseMessageHandler {
+    private final Random random;
 
     private static final Logger logger = LoggerFactory.getLogger(ConfirmHandler.class);
     private static final int BUNKER_COUNT = 30;
@@ -19,8 +20,9 @@ public class ConfirmHandler extends BaseMessageHandler {
     private static final int MAX_EVENT_ATTEMPTS = 100;
 
     @Inject
-    public ConfirmHandler(GameService gameService) {
+    public ConfirmHandler(GameService gameService, Random random) {
         super(gameService);
+        this.random = random;
     }
 
     /**
@@ -62,11 +64,10 @@ public class ConfirmHandler extends BaseMessageHandler {
     }
 
     private int pickUniqueEventIndex(Room room) {
-        Random rand = new Random();
         int newEventIdx;
         int attempts = 0;
         do {
-            newEventIdx = rand.nextInt(BUNKER_COUNT);
+            newEventIdx = random.nextInt(BUNKER_COUNT);
             attempts++;
         } while (room.getEventByRound().containsValue(newEventIdx) && attempts < MAX_EVENT_ATTEMPTS);
         return newEventIdx;

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,7 +22,7 @@ class ConfirmHandlerTest {
     @BeforeEach
     void setUp() {
         gameService = mock(GameService.class);
-        handler = new ConfirmHandler(gameService);
+        handler = new ConfirmHandler(gameService, new Random());
     }
 
     @Test
