@@ -6,7 +6,7 @@ import com.google.inject.Injector;
 
 public class Main {
   private Main() {
-    // No requirement for initialization.
+    // No instance needed
   }
 
   /** Entry point of the application. */

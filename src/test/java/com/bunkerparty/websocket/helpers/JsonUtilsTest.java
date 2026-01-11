@@ -1,6 +1,6 @@
 package com.bunkerparty.websocket.helpers;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;

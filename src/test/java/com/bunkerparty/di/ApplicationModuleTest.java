@@ -1,6 +1,7 @@
 package com.bunkerparty.di;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.bunkerparty.config.AppConfig;
 import com.bunkerparty.config.CorsConfig;

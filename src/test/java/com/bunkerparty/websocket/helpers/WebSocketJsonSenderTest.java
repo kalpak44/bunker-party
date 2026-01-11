@@ -1,6 +1,10 @@
 package com.bunkerparty.websocket.helpers;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.gson.JsonObject;
 import java.io.IOException;

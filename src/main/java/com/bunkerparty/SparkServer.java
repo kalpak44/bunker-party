@@ -1,6 +1,8 @@
 package com.bunkerparty;
 
-import static spark.Spark.*;
+import static spark.Spark.init;
+import static spark.Spark.port;
+import static spark.Spark.webSocket;
 
 import com.bunkerparty.config.AppConfig;
 import com.bunkerparty.config.CorsConfig;

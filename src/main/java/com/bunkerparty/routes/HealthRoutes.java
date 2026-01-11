@@ -6,6 +6,7 @@ import com.bunkerparty.service.GameService;
 import com.google.gson.Gson;
 import jakarta.inject.Inject;
 import java.util.Map;
+import spark.Route;
 
 public class HealthRoutes {
 
@@ -20,12 +21,11 @@ public class HealthRoutes {
 
   /** Registers health check endpoints. */
   public void register() {
-
-    get(
-        "/health",
+    Route healthRoute =
         (req, res) -> {
           res.type("application/json");
           return gson.toJson(Map.of("status", "ok", "rooms", gameService.getAllRooms().size()));
-        });
+        };
+    get("/health", healthRoute);
   }
 }
