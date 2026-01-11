@@ -15,8 +15,8 @@ public class AppConfig {
     if (portEnv != null) {
       try {
         return Integer.parseInt(portEnv);
-      } catch (NumberFormatException ignored) {
-        logger.warn("Invalid PORT env var: {}", portEnv);
+      } catch (NumberFormatException e) {
+        logger.warn("Invalid PORT env var: {}", portEnv, e);
       }
     }
     return DEFAULT_PORT;
