@@ -11,7 +11,7 @@ public class AppConfig {
 
   /** Returns the port number to run the server on, from PORT env var or 8000 by default. */
   public int getPort() {
-    String portEnv = System.getenv("PORT");
+    String portEnv = getEnv("PORT");
     if (portEnv != null) {
       try {
         return Integer.parseInt(portEnv);
@@ -20,5 +20,9 @@ public class AppConfig {
       }
     }
     return DEFAULT_PORT;
+  }
+
+  protected String getEnv(String key) {
+    return System.getenv(key);
   }
 }
