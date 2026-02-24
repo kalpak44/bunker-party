@@ -73,4 +73,37 @@ Open the game at: http://localhost:8000
 
 ---
 
-Have fun - and good luck surviving the bunker ☢️
+## Testing Guidelines
+
+### Assertion Style
+
+**Preferred assertion style:** Use assertion chains (e.g., AssertJ's `assertThat`) for new tests. This style improves readability and provides better failure messages compared to classic JUnit assertions.
+
+#### Example (preferred):
+```java
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Test
+void shouldReturnCorrectValue() {
+    int result = myService.calculate();
+    assertThat(result)
+        .isPositive()
+        .isLessThan(100)
+        .isEqualTo(42);
+}
+```
+
+#### Classic JUnit (legacy, not preferred):
+```java
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@Test
+void shouldReturnCorrectValue() {
+    int result = myService.calculate();
+    assertEquals(42, result);
+}
+```
+
+> **Note:** For all new and updated tests, use assertion chains as shown above.
+
+Have fun – and good luck surviving the bunker ☢️

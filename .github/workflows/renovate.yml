@@ -1,0 +1,40 @@
+name: Renovate
+on:
+  schedule:
+    # The "*" characters must be quoted to avoid being interpreted as YAML aliases.
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Dry Run'
+        required: false
+        default: 'null'
+        type: choice
+        options:
+          - 'null'
+          - 'lookup'
+          - 'full'
+      logLevel:
+        description: 'Log Level'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - 'info'
+          - 'debug'
+          - 'trace'
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v41.0.7
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_DRY_RUN: ${{ github.event.inputs.dryRun || 'null' }}
+          LOG_LEVEL: ${{ github.event.inputs.logLevel || 'info' }}
