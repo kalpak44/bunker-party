@@ -31,7 +31,7 @@
         <assertj.version>4.0.0-M1</assertj.version>
 
         <!-- Plugins -->
-        <maven.compiler.plugin.version>4.0.0-beta-4</maven.compiler.plugin.version>
+        <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <jib.plugin.version>3.5.1</jib.plugin.version>
         <jacoco.plugin.version>0.8.14</jacoco.plugin.version>
