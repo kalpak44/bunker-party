@@ -1,8 +1,8 @@
 # The PR gate. The AI PR agent (.github/workflows/ai-pr-agent.yml) refuses to merge a
 # pull request without a green check, so this is the check it waits for.
 #
-# Deliberately not docker-publish.yml: that one talks to SonarCloud and pushes an image,
-# neither of which belongs on a dependency bump. Build + tests only.
+# Same quality bar as docker-publish.yml — format, build, tests, coverage and SonarCloud —
+# minus the Docker Hub push, which has no business running on a dependency bump.
 name: PR Check
 
 on:
@@ -16,9 +16,16 @@ jobs:
     permissions:
       contents: read
 
+    env:
+      # Job-level so the `if:` on the analysis step below can test it.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
     steps:
       - name: Checkout source
+        # Full history: Sonar needs it for blame and new-code detection on a PR.
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 25
         uses: actions/setup-java@v4
@@ -32,3 +39,15 @@ jobs:
 
       - name: Build, test, coverage
         run: mvn -B verify
+
+      - name: SonarCloud analysis
+        # Secrets are not exposed to pull_request runs from a fork, so the token is empty
+        # there and there is nothing to analyse — skip instead of failing the check.
+        # The scanner picks up the PR key, branch and base from the Actions environment.
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: |
+          mvn -B sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=kalpak44 \
+            -Dsonar.projectKey=bunker-party \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
