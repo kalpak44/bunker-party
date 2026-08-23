@@ -1,0 +1,76 @@
+# One pipeline for every trigger: format, build, test, coverage, SonarCloud.
+#
+# The Docker Hub publish is the only conditional part — it runs when the ref being
+# built is main and never on a pull request, so a dependency bump is fully validated
+# without pushing an image.
+#
+# This is also the workflow the AI PR agent gates on (PR_CHECK_WORKFLOW=build.yml).
+# It refuses to merge without a green check here, and it can dispatch this workflow
+# on a PR branch whose head commit has no checks — hence workflow_dispatch.
+name: Build, Test, SonarCloud, Docker
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    env:
+      # Job-level so the `if:` conditions below can test them. Secrets are not exposed
+      # to pull_request runs from a fork, so on those the analysis step skips itself
+      # rather than failing the check.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Checkout source
+        # Full history: Sonar needs it for blame and new-code detection.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Check formatting
+        run: mvn -B fmt:check
+
+      - name: Build, test, coverage
+        run: mvn -B verify
+
+      - name: SonarCloud analysis
+        # qualitygate.wait makes the gate an actual gate: a failing gate fails this
+        # check, so a PR cannot be merged past it.
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: |
+          mvn -B sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=kalpak44 \
+            -Dsonar.projectKey=bunker-party \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.qualitygate.wait=true
+
+      - name: Log in to Docker Hub
+        if: ${{ env.PUBLISH == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push image with Jib
+        if: ${{ env.PUBLISH == 'true' }}
+        run: |
+          mvn -B package jib:build \
+            -Djib.to.image=${{ secrets.DOCKERHUB_USERNAME }}/bunker-party \
+            -Djib.to.tags=latest,${{ github.sha }}
