@@ -76,7 +76,7 @@ public class GameWebSocketHandler {
 
   /** Called when a WebSocket message is received. */
   @OnWebSocketMessage
-  public void onMessage(Session session, String message) throws Exception {
+  public void onMessage(Session session, String message) {
     var json = JsonParser.parseString(message).getAsJsonObject();
     String type = json.get("type").getAsString();
 

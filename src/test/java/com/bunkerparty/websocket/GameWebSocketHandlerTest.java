@@ -51,7 +51,7 @@ class GameWebSocketHandlerTest {
   }
 
   @Test
-  void shouldDispatchMessageToCorrectHandler() throws Exception {
+  void shouldDispatchMessageToCorrectHandler() {
     Session session = mock(Session.class);
     JsonObject msg = new JsonObject();
     msg.addProperty("type", "new_game");
@@ -62,7 +62,7 @@ class GameWebSocketHandlerTest {
   }
 
   @Test
-  void shouldHandlePingMessage() throws Exception {
+  void shouldHandlePingMessage() {
     Session session = mock(Session.class);
     JsonObject msg = new JsonObject();
     msg.addProperty("type", "ping");
