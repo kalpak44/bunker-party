@@ -3,11 +3,11 @@ package com.bunkerparty.domain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.util.Map;
 import org.eclipse.jetty.websocket.api.Session;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class PlayerTest {
 
@@ -16,7 +16,7 @@ class PlayerTest {
     String id = "player-1";
     String token = "token-1";
     String name = "Alice";
-    Session session = Mockito.mock(Session.class);
+    Session session = mock(Session.class);
     Map<String, Integer> characterIndices = Map.of("profession", 1);
 
     Player player = new Player(id, token, name, session, characterIndices);
@@ -42,15 +42,18 @@ class PlayerTest {
   }
 
   @Test
-  void shouldTrackOnlineStatusAndLastSeen() throws InterruptedException {
+  void shouldTrackOnlineStatusAndLastSeen() {
     Player player = new Player("1", "t", "Alice", null, Map.of());
-    long initialLastSeen = player.getLastSeen();
-    Thread.sleep(10);
+    long before = System.currentTimeMillis();
 
     player.setOnline(false);
 
+    long after = System.currentTimeMillis();
     assertFalse(player.isOnline());
-    assertTrue(player.getLastSeen() > initialLastSeen);
+    // Going offline re-stamps lastSeen with the current time. Bounding it by the window
+    // around the call proves that without sleeping for the clock to tick over.
+    assertTrue(player.getLastSeen() >= before);
+    assertTrue(player.getLastSeen() <= after);
   }
 
   @Test

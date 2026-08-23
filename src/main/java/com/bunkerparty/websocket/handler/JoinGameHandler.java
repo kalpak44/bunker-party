@@ -22,7 +22,7 @@ public class JoinGameHandler extends BaseMessageHandler {
 
   /** Handles the "join_game" message to join or rejoin a room. */
   @Override
-  public void handle(Session session, JsonObject msg) throws Exception {
+  public void handle(Session session, JsonObject msg) {
     String roomId = getString(msg, "roomId");
     String name = getString(msg, "name").trim();
     String token =
