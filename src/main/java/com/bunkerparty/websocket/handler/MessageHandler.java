@@ -5,5 +5,5 @@ import org.eclipse.jetty.websocket.api.Session;
 
 public interface MessageHandler {
   /** Handles an incoming WebSocket message. */
-  void handle(Session session, JsonObject message) throws Exception;
+  void handle(Session session, JsonObject message);
 }
