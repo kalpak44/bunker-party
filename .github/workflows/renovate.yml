@@ -36,5 +36,8 @@ jobs:
           configurationFile: renovate.json
           token: ${{ secrets.RENOVATE_TOKEN }}
         env:
+          # Without this Renovate has no repository to scan and every run ends in
+          # "WARN: No repositories found" without opening a single PR.
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_DRY_RUN: ${{ github.event.inputs.dryRun || 'null' }}
           LOG_LEVEL: ${{ github.event.inputs.logLevel || 'info' }}
