@@ -1,6 +1,8 @@
 package com.bunkerparty.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -78,5 +80,19 @@ class GameServiceTest {
     gameService.sendToSession(session, msg);
 
     verify(sender).send(session, msg);
+  }
+
+  @Test
+  void shouldSwallowBroadcastSendFailure() throws IOException {
+    Room room = new Room("1234");
+    Session session = mock(Session.class);
+    when(session.isOpen()).thenReturn(true);
+    Player player = new Player("p1", "t1", "Alice", session, Map.of());
+    room.addPlayer(player);
+    doThrow(new IOException("boom")).when(sender).send(eq(session), any(JsonObject.class));
+
+    gameService.broadcastUpdate(room);
+
+    verify(sender).send(eq(session), any(JsonObject.class));
   }
 }
