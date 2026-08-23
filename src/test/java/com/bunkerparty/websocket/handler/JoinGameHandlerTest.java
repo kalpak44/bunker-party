@@ -30,7 +30,7 @@ class JoinGameHandlerTest {
   }
 
   @Test
-  void shouldJoinNewPlayerSuccessfully() throws Exception {
+  void shouldJoinNewPlayerSuccessfully() {
     Session session = mock(Session.class);
     Room room = new Room("1234");
     JsonObject msg = new JsonObject();
@@ -48,7 +48,7 @@ class JoinGameHandlerTest {
   }
 
   @Test
-  void shouldRejoinExistingPlayerWithCorrectToken() throws Exception {
+  void shouldRejoinExistingPlayerWithCorrectToken() {
     Session session = mock(Session.class);
     Room room = new Room("1234");
     Player existing = new Player("p1", "token123", "Bob", null, Map.of());
@@ -69,7 +69,7 @@ class JoinGameHandlerTest {
   }
 
   @Test
-  void shouldFailRejoinWithWrongToken() throws Exception {
+  void shouldFailRejoinWithWrongToken() {
     Session session = mock(Session.class);
     Room room = new Room("1234");
     Player existing = new Player("p1", "token123", "Bob", null, Map.of());
@@ -93,7 +93,7 @@ class JoinGameHandlerTest {
   }
 
   @Test
-  void shouldFailIfRoomNotFound() throws Exception {
+  void shouldFailIfRoomNotFound() {
     Session session = mock(Session.class);
     JsonObject msg = new JsonObject();
     msg.addProperty("roomId", "9999");
@@ -107,7 +107,7 @@ class JoinGameHandlerTest {
   }
 
   @Test
-  void shouldRejectNewJoinWhenGameAlreadyStarted() throws Exception {
+  void shouldRejectNewJoinWhenGameAlreadyStarted() {
     Session session = mock(Session.class);
     Room room = new Room("1234");
     room.setPhase(Room.PHASE_REVEAL);
@@ -126,7 +126,7 @@ class JoinGameHandlerTest {
   }
 
   @Test
-  void shouldRejectNewJoinWhenRoomIsFull() throws Exception {
+  void shouldRejectNewJoinWhenRoomIsFull() {
     Session session = mock(Session.class);
     Room room = new Room("1234");
     for (int i = 0; i < 6; i++) {
