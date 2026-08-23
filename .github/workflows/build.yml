@@ -21,6 +21,7 @@ jobs:
 
     permissions:
       contents: read
+      packages: write # push the image to ghcr.io
 
     env:
       # Job-level so the `if:` conditions below can test them. Secrets are not exposed
@@ -69,13 +70,41 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push image with Jib
+      - name: Log in to GHCR
         if: ${{ env.PUBLISH == 'true' }}
-        # Secrets go through env, never interpolated into the script body.
+        # Pinned to the commit behind v3 — a tag can be moved, a SHA cannot.
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA (no prefix)
+        if: ${{ env.PUBLISH == 'true' }}
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push image to Docker Hub
+        if: ${{ env.PUBLISH == 'true' }}
+        # Secrets and contexts go through env, never interpolated into the script body.
+        # The 7-char short SHA is the tag homelab-infra's `just bump-images` looks for
+        # when it points the cluster at a newly published image.
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          IMAGE_SHA: ${{ github.sha }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
           mvn -B package jib:build \
             -Djib.to.image="$DOCKERHUB_USERNAME/bunker-party" \
-            -Djib.to.tags="latest,$IMAGE_SHA"
+            -Djib.to.tags="latest,$IMAGE_TAG"
+
+      - name: Push the same image to GHCR
+        if: ${{ env.PUBLISH == 'true' }}
+        # jib:build on its own — `package` already ran in the step above, so this only
+        # re-pushes the built layers to the second registry.
+        env:
+          GHCR_IMAGE: ghcr.io/${{ github.repository }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          mvn -B jib:build \
+            -Djib.to.image="$GHCR_IMAGE" \
+            -Djib.to.tags="latest,$IMAGE_TAG"
