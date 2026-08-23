@@ -44,4 +44,11 @@ class AppConfigTest {
 
     assertEquals(8000, config.getPort());
   }
+
+  @Test
+  void getEnvDelegatesToSystemGetenv() {
+    AppConfig config = new AppConfig();
+
+    assertEquals(System.getenv("PATH"), config.getEnv("PATH"));
+  }
 }
