@@ -3,6 +3,7 @@ package com.bunkerparty.websocket.handler;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -88,5 +89,22 @@ class ConfirmHandlerTest {
     handler.handle(null, msg);
 
     assertEquals(Room.PHASE_GAME_OVER, room.getPhase());
+  }
+
+  @Test
+  void shouldIgnoreConfirmInWrongPhase() {
+    Room room = new Room("1234");
+    room.setPhase(Room.PHASE_REVEAL);
+    Player p1 = new Player("p1", "t1", "Alice", null, Map.of("p", 1));
+    room.addPlayer(p1);
+    when(gameService.getRoom("1234")).thenReturn(room);
+
+    JsonObject msg = new JsonObject();
+    msg.addProperty("roomId", "1234");
+    msg.addProperty("playerId", "p1");
+
+    handler.handle(null, msg);
+
+    verify(gameService, never()).broadcastUpdate(room);
   }
 }

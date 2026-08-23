@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,5 +104,58 @@ class JoinGameHandlerTest {
     verify(gameService)
         .sendToSession(
             eq(session), argThat(json -> json.get("code").getAsString().equals("room_not_found")));
+  }
+
+  @Test
+  void shouldFailJoinWithEmptyName() throws Exception {
+    Session session = mock(Session.class);
+    Room room = new Room("1234");
+    JsonObject msg = new JsonObject();
+    msg.addProperty("roomId", "1234");
+    msg.addProperty("name", "");
+    when(gameService.getRoom("1234")).thenReturn(room);
+
+    handler.handle(session, msg);
+
+    verify(gameService)
+        .sendToSession(
+            eq(session), argThat(json -> json.get("code").getAsString().equals("name_required")));
+    verify(gameService, never()).broadcastUpdate(room);
+  }
+
+  @Test
+  void shouldFailJoinWhenGameAlreadyStarted() throws Exception {
+    Session session = mock(Session.class);
+    Room room = new Room("1234");
+    room.setPhase(Room.PHASE_REVEAL);
+    JsonObject msg = new JsonObject();
+    msg.addProperty("roomId", "1234");
+    msg.addProperty("name", "Bob");
+    when(gameService.getRoom("1234")).thenReturn(room);
+
+    handler.handle(session, msg);
+
+    verify(gameService)
+        .sendToSession(
+            eq(session), argThat(json -> json.get("code").getAsString().equals("game_started")));
+  }
+
+  @Test
+  void shouldFailJoinWhenRoomFull() throws Exception {
+    Session session = mock(Session.class);
+    Room room = new Room("1234");
+    for (int i = 0; i < 6; i++) {
+      room.addPlayer(new Player("p" + i, "t" + i, "Player" + i, null, Map.of()));
+    }
+    JsonObject msg = new JsonObject();
+    msg.addProperty("roomId", "1234");
+    msg.addProperty("name", "Bob");
+    when(gameService.getRoom("1234")).thenReturn(room);
+
+    handler.handle(session, msg);
+
+    verify(gameService)
+        .sendToSession(
+            eq(session), argThat(json -> json.get("code").getAsString().equals("room_full")));
   }
 }
