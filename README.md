@@ -66,6 +66,17 @@ docker run --rm -p 8000:8000 bunker-party:latest
 
 Open the game at: http://localhost:8000
 
+### Published image
+Every push to `main` publishes to GitHub Container Registry, tagged `latest` and with the
+7-char commit SHA:
+
+```bash
+docker run --rm -p 8000:8000 ghcr.io/kalpak44/bunker-party:latest
+```
+
+The homelab cluster pins the SHA tag rather than `latest`, so a deploy is always
+traceable to one commit.
+
 ## Notes
 - Room codes are **4 digits**.
 - Rooms are destroyed automatically when empty.
