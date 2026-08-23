@@ -63,14 +63,19 @@ jobs:
 
       - name: Log in to Docker Hub
         if: ${{ env.PUBLISH == 'true' }}
-        uses: docker/login-action@v3
+        # Pinned to the commit behind v3 — a tag can be moved, a SHA cannot.
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build & push image with Jib
         if: ${{ env.PUBLISH == 'true' }}
+        # Secrets go through env, never interpolated into the script body.
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_SHA: ${{ github.sha }}
         run: |
           mvn -B package jib:build \
-            -Djib.to.image=${{ secrets.DOCKERHUB_USERNAME }}/bunker-party \
-            -Djib.to.tags=latest,${{ github.sha }}
+            -Djib.to.image="$DOCKERHUB_USERNAME/bunker-party" \
+            -Djib.to.tags="latest,$IMAGE_SHA"

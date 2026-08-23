@@ -31,7 +31,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@v41.0.7
+        # Pinned to the commit behind v41.0.7 — a tag can be moved, a SHA cannot.
+        uses: renovatebot/github-action@2be773c4be8361d8182cc1b750e75bbc75af71b0 # v41.0.7
         with:
           configurationFile: renovate.json
           token: ${{ secrets.RENOVATE_TOKEN }}
