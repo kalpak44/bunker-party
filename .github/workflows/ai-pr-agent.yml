@@ -56,10 +56,6 @@ jobs:
       # Optional workflow to trigger when a PR head commit has no checks.
       PR_CHECK_WORKFLOW: ${{ vars.PR_CHECK_WORKFLOW }}
 
-      # A hand-started run is allowed to fix the gate straight on the default branch
-      # when there is no PR to carry the fix. The nightly cron is not.
-      MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}
-
       # SonarCloud coordinates for pass 2. The project is private on SonarCloud, so
       # every API read needs the token.
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -739,21 +735,12 @@ jobs:
               head branch, alongside any compatibility fixes, and carry on with the
               normal pass-1 flow: validate, commit, push, re-check CI, merge.
 
-            - If the gate is failing and there is no open PR to carry the fix, what you
-              do depends on how this run was started:
+            - If the gate is failing and there is no open PR to carry the fix, commit
+              the in-scope fixes DIRECTLY to the default branch. See section 23.
 
-                MANUAL_RUN is "true"  — a human started this run on purpose. Commit the
-                                        in-scope fixes DIRECTLY to the default branch.
-                                        See section 23.
+          Either way: NEVER create a branch and NEVER open a PR.
 
-                MANUAL_RUN is "false" — this is the nightly cron. Read the state, write
-                                        it into the summary, and stop. Touch nothing.
-
-              Either way: NEVER create a branch and NEVER open a PR.
-
-          Check which one you are:
-
-            echo "$MANUAL_RUN"
+          A failing gate always gets fixed as far as it safely can be, on every run.
 
           ----------------------------------------------------------------------
           19. READ THE CURRENT SONAR STATE
@@ -804,8 +791,8 @@ jobs:
 
           Sonar fixes go on the head branch of the PR you are processing — the same
           branch that already carries the dependency bump and any compatibility fixes —
-          or, on a manual run with no open PR, straight onto the default branch per
-          section 23. Never split them across branches. Never create a branch for them.
+          or, when there is no open PR, straight onto the default branch per section 23.
+          Never split them across branches. Never create a branch for them.
 
           Verify where you are before editing anything:
 
@@ -923,19 +910,16 @@ jobs:
           invent one. Go to section 23.
 
           ----------------------------------------------------------------------
-          23. MANUAL RUN, NO OPEN PR — COMMIT TO THE DEFAULT BRANCH
+          23. NO OPEN PR — COMMIT TO THE DEFAULT BRANCH
           ----------------------------------------------------------------------
 
-          This section applies ONLY when ALL of these hold:
+          This section applies when ALL of these hold:
 
-            - MANUAL_RUN is exactly "true"
             - pass 1 found no open PR you were allowed to work on
             - the quality gate is failing
             - the fixes you have are in scope by section 20, i.e. behaviour-preserving
 
-          If MANUAL_RUN is not "true", this section does not exist. Report and stop.
-
-          When it does apply, work directly on the default branch:
+          Work directly on the default branch:
 
             git checkout <default-branch>
             git pull --ff-only
@@ -967,8 +951,8 @@ jobs:
           not, report which conditions remain — do NOT keep pushing speculative commits
           to the default branch chasing it. One considered attempt per run.
 
-          This is the ONLY circumstance in which you may write to the default branch. A
-          scheduled run never may, and a run with an open PR never may.
+          This is the ONLY circumstance in which you may write to the default branch.
+          When a PR is open to carry the fix, the fix goes there instead.
 
           ======================================================================
           HARD RULES
@@ -979,10 +963,12 @@ jobs:
           - NEVER merge a human-authored PR.
           - NEVER modify a human-authored PR.
           - NEVER create a pull request. You only ever finish existing ones.
-          - NEVER create a branch. Every commit you make goes on a PR head branch that
-            already exists.
-          - NEVER commit directly to the default/base branch.
-          - NEVER push directly to the default/base branch.
+          - NEVER create a branch. Every commit goes either on a PR head branch that
+            already exists, or on the default branch under section 23.
+          - NEVER commit or push to the default branch, with exactly one exception:
+            there is no open PR and you are fixing a failing Sonar gate with
+            behaviour-preserving changes, per section 23.
+          - NEVER touch the base branch of a PR you are processing.
           - Compatibility fixes AND Sonar fixes both go to the head branch of the PR
             being processed, and merge with it.
           - NEVER force-push.
@@ -1027,8 +1013,7 @@ jobs:
 
             sonar — OK — 0/0 — nothing to do — gate already passing
             sonar — ERROR — 4/6 — on PR #124 — 2 issues are in workflow files, needs a human
-            sonar — ERROR — 3/3 — on main — manual run, no open PR; gate now OK
-            sonar — ERROR — 0/5 — nowhere — scheduled run, no open PR to carry the fixes
+            sonar — ERROR — 3/3 — on main — no open PR to carry the fixes; gate now OK
             sonar — unknown — 0/0 — skipped — SONAR_TOKEN not available
 
           Then, if any issue needs a human, one line per issue:
