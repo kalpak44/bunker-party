@@ -1,13 +1,13 @@
 # One pipeline for every trigger: format, build, test, coverage, SonarCloud.
 #
-# The Docker Hub publish is the only conditional part — it runs when the ref being
-# built is main and never on a pull request, so a dependency bump is fully validated
-# without pushing an image.
+# The GHCR publish is the only conditional part — it runs when the ref being built is
+# main and never on a pull request, so a dependency bump is fully validated without
+# pushing an image.
 #
 # This is also the workflow the AI PR agent gates on (PR_CHECK_WORKFLOW=build.yml).
 # It refuses to merge without a green check here, and it can dispatch this workflow
 # on a PR branch whose head commit has no checks — hence workflow_dispatch.
-name: Build, Test, SonarCloud, Docker
+name: Build, Test, SonarCloud, Publish
 
 on:
   pull_request:
@@ -62,14 +62,6 @@ jobs:
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
             -Dsonar.qualitygate.wait=true
 
-      - name: Log in to Docker Hub
-        if: ${{ env.PUBLISH == 'true' }}
-        # Pinned to the commit behind v3 — a tag can be moved, a SHA cannot.
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Log in to GHCR
         if: ${{ env.PUBLISH == 'true' }}
         # Pinned to the commit behind v3 — a tag can be moved, a SHA cannot.
@@ -84,27 +76,15 @@ jobs:
         id: vars
         run: echo "sha_short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Build & push image to Docker Hub
+      - name: Build & push image to GHCR
         if: ${{ env.PUBLISH == 'true' }}
-        # Secrets and contexts go through env, never interpolated into the script body.
+        # Contexts go through env, never interpolated into the script body.
         # The 7-char short SHA is the tag homelab-infra's `just bump-images` looks for
         # when it points the cluster at a newly published image.
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
-        run: |
-          mvn -B package jib:build \
-            -Djib.to.image="$DOCKERHUB_USERNAME/bunker-party" \
-            -Djib.to.tags="latest,$IMAGE_TAG"
-
-      - name: Push the same image to GHCR
-        if: ${{ env.PUBLISH == 'true' }}
-        # jib:build on its own — `package` already ran in the step above, so this only
-        # re-pushes the built layers to the second registry.
         env:
           GHCR_IMAGE: ghcr.io/${{ github.repository }}
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
-          mvn -B jib:build \
+          mvn -B package jib:build \
             -Djib.to.image="$GHCR_IMAGE" \
             -Djib.to.tags="latest,$IMAGE_TAG"
