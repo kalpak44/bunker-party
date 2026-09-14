@@ -36,7 +36,7 @@
         <jib.plugin.version>3.5.2</jib.plugin.version>
         <jacoco.plugin.version>0.8.15</jacoco.plugin.version>
         <fmt.plugin.version>2.29</fmt.plugin.version>
-        <sonar.plugin.version>5.7.0.6970</sonar.plugin.version>
+        <sonar.plugin.version>5.8.0.7211</sonar.plugin.version>
         <sonar.projectKey>bunker-party</sonar.projectKey>
         <sonar.organization>kalpak44</sonar.organization>
 
