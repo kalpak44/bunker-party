@@ -193,7 +193,13 @@
                 <version>${jib.plugin.version}</version>
                 <configuration>
                     <from>
-                        <image>eclipse-temurin:25-jre-alpine</image>
+                        <!-- Same Java 25 JRE on the same Alpine base, but rebuilt by the
+                             publisher after the Alpine v3.24 OpenSSL and expat security
+                             updates. eclipse-temurin:25-jre-alpine was last rebuilt before
+                             those updates and still ships OpenSSL 3.5.7-r0 and expat
+                             2.8.3-r0, which the publish workflow's grype scan reports as
+                             fixable Critical/High findings. -->
+                        <image>azul/zulu-openjdk-alpine:25-jre-headless</image>
                     </from>
 
                     <container>
