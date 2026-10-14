@@ -22,6 +22,13 @@
 
         <!-- Dependencies -->
         <spark.version>2.9.4</spark.version>
+        <!-- Jetty is transitive through spark-core, which resolves the 9.4.x line
+             only as far as 9.4.48.v20220622. That 9.4.48 tree carries a High
+             jetty-server finding (GHSA-q4rv-gq96-w7c5, fixed in 9.4.57) that
+             Dependabot cannot propose because nothing in this pom names jetty
+             directly. The BOM pins the whole tree to the newest published 9.4.x
+             patch, keeping every jetty artifact in lockstep. -->
+        <jetty.version>9.4.58.v20250814</jetty.version>
         <gson.version>2.14.0</gson.version>
         <guice.version>7.0.0</guice.version>
         <slf4j.version>2.1.0-alpha1</slf4j.version>
@@ -42,6 +49,18 @@
 
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-bom</artifactId>
+                <version>${jetty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Spark Java: lightweight HTTP server + routing -->
