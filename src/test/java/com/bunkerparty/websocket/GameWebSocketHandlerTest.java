@@ -1,5 +1,6 @@
 package com.bunkerparty.websocket;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
@@ -83,7 +84,7 @@ class GameWebSocketHandlerTest {
 
     webSocketHandler.onClose(session, 1000, "Normal closure");
 
-    assert !player.isOnline();
+    assertFalse(player.isOnline());
     verify(gameService).broadcastUpdate(room);
   }
 }
