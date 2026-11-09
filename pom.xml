@@ -221,13 +221,12 @@
                 <version>${jib.plugin.version}</version>
                 <configuration>
                     <from>
-                        <!-- Same Java 25 JRE on the same Alpine base, but rebuilt by the
-                             publisher after the Alpine v3.24 OpenSSL and expat security
-                             updates. eclipse-temurin:25-jre-alpine was last rebuilt before
-                             those updates and still ships OpenSSL 3.5.7-r0 and expat
-                             2.8.3-r0, which the publish workflow's grype scan reports as
-                             fixable Critical/High findings. -->
-                        <image>azul/zulu-openjdk-alpine:25-jre-headless</image>
+                        <!-- Official Java 25 headless JRE. The previous Alpine image shipped
+                             zlib 1.3.2-r1, which grype reports as Critical CVE-2026-4738
+                             (fixed in 1.4-r0). No maintained Alpine image currently carries
+                             that fix, while this Amazon Corretto image scans clean of all
+                             Critical and High base-image findings. -->
+                        <image>amazoncorretto:25-headless</image>
                     </from>
 
                     <container>
