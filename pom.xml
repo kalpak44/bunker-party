@@ -221,12 +221,12 @@
                 <version>${jib.plugin.version}</version>
                 <configuration>
                     <from>
-                        <!-- Official Java 25 headless JRE. The previous Alpine image shipped
-                             zlib 1.3.2-r1, which grype reports as Critical CVE-2026-4738
-                             (fixed in 1.4-r0). No maintained Alpine image currently carries
-                             that fix, while this Amazon Corretto image scans clean of all
-                             Critical and High base-image findings. -->
-                        <image>amazoncorretto:25-headless</image>
+                        <!-- Official Java 25 headless JRE. Docker Hub's 25-headless tag was
+                             last rebuilt 2026-11-05 and still carries the glibc and rpm
+                             versions fixed in ALAS2023-2026-3396, -3398 and -3430. The same
+                             image on Amazon's public ECR registry is current and scans clean
+                             of all Critical and High findings. -->
+                        <image>public.ecr.aws/amazoncorretto/amazoncorretto:25-headless</image>
                     </from>
 
                     <container>
