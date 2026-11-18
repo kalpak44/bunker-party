@@ -231,6 +231,11 @@
 
                     <container>
                         <mainClass>com.bunkerparty.Main</mainClass>
+                        <!-- The Base64 intrinsic overflows the heap on AVX-512 CPUs
+                             (CVE-2026-114938). -->
+                        <jvmFlags>
+                            <jvmFlag>-XX:-UseBASE64Intrinsics</jvmFlag>
+                        </jvmFlags>
                         <ports>
                             <port>8000</port>
                         </ports>
