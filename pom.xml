@@ -36,7 +36,7 @@
              release that fixes it. -->
         <guava.version>33.8.0-jre</guava.version>
         <slf4j.version>2.1.0-alpha1</slf4j.version>
-        <logback.version>1.6.6</logback.version>
+        <logback.version>1.6.8</logback.version>
         <junit.version>6.1.3</junit.version>
         <mockito.version>5.24.0</mockito.version>
         <assertj.version>4.0.0-M1</assertj.version>
@@ -47,7 +47,7 @@
         <jib.plugin.version>3.5.2</jib.plugin.version>
         <jacoco.plugin.version>0.8.16</jacoco.plugin.version>
         <fmt.plugin.version>2.29</fmt.plugin.version>
-        <sonar.plugin.version>5.8.0.7211</sonar.plugin.version>
+        <sonar.plugin.version>5.9.0.7382</sonar.plugin.version>
         <sonar.projectKey>bunker-party</sonar.projectKey>
         <sonar.organization>kalpak44</sonar.organization>
 
